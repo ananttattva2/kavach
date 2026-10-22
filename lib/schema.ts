@@ -1,0 +1,21 @@
+import { z } from 'zod';
+export const fieldMap = {
+ basic:['Client legal name','Trade name','Company group name','Company type','Financial year','PIBO category','Authorised person name','Authorised contact number','Authorised email','Coordinating person name','Coordinating contact number','Coordinating email'],
+ address:['Registered address line 1','Registered address line 2','Registered area / landmark','Registered state','Registered city','Registered PIN code','Communication address line 1','Communication address line 2','Communication area / landmark','Communication state','Communication city','Communication PIN code'],
+};
+export const documentTypes=['GST Certificate','CIN Document','PAN Card','Factory License','EPR Certificate','IEC Certificate','DIC/DCSSI Certificate'];
+export const tables = {
+ msme:{title:'MSME details',fields:['Year','Status','Major activity','Udyam number','Turnover','Certificate']},
+ cte:{title:'CTE details',fields:['Plant name','Consent number','Category','Issued date','Valid up to','Plant location','Plant address','Factory head','Designation','Head contact number','Head email','Contact person','Contact designation','Contact number','Contact email','Document']},
+ cteProducts:{title:'CTE production capacity',fields:['Plant name','Product name','Quantity','UOM']},
+ cto:{title:'CTO / CCA details',fields:['CTO / CCA type','Plant name','Industry type','Category','Consent order number','Issued date','Valid up to','Plant location','Plant address','Factory head','Designation','Head contact number','Head email','Contact person','Contact designation','Contact number','Contact email','Document']},
+ ctoProducts:{title:'CTO / CCA products',fields:['Plant name','Product name','Quantity','UOM']},
+ capacity:{title:'Production capacity validation',fields:['Product name','Machine name','Production output in one hour','UOM','Power per hour kWh','Machine working days','Working hours per day','Total monthly capacity (kg)']},
+ additional:{title:'CTO / CCA additional details',fields:['Plant name','Total capital investment in lakhs','Ground / bore well water usage','CGWA NOC requirement']},
+ regulations:{title:'Regulations covered under CTO',fields:['Regulation','Plant name','Description (water consumption / waste)','Permitted quantity','UOM']},
+};
+const row=z.record(z.string().max(100),z.string().max(5000));
+export const clientSchema=z.object({id:z.string().optional(),status:z.enum(['draft','submitted']),basic:row,address:row,sameAddress:z.boolean(),documents:z.array(z.object({type:z.string(),number:z.string().max(200),date:z.string(),fileId:z.string(),fileName:z.string()})).max(20),tables:z.record(z.string(),z.array(row).max(100)),plantCount:z.coerce.number().min(0).max(1000)});
+export type ClientData=z.infer<typeof clientSchema>;
+export const emptyClient:ClientData={status:'draft',basic:{},address:{},sameAddress:false,documents:documentTypes.map(type=>({type,number:'',date:'',fileId:'',fileName:''})),tables:{},plantCount:1};
+export function submissionErrors(data:ClientData){const errors:string[]=[];for(const key of ['Client legal name','Trade name','Company group name','Company type','Financial year','PIBO category','Authorised person name','Authorised contact number','Authorised email'])if(!data.basic[key]?.trim())errors.push(key+' is required');for(const key of ['Registered address line 1','Registered state','Registered city','Registered PIN code'])if(!data.address[key]?.trim())errors.push(key+' is required');for(const key of ['Authorised email','Coordinating email'])if(data.basic[key]&&!z.email().safeParse(data.basic[key]).success)errors.push(key+' must be valid');for(const key of ['Authorised contact number','Coordinating contact number'])if(data.basic[key]&&!/^[+\d\s()-]{7,20}$/.test(data.basic[key]))errors.push(key+' must be valid');for(const key of ['Registered PIN code','Communication PIN code'])if(data.address[key]&&!/^\d{6}$/.test(data.address[key]))errors.push(key+' must contain 6 digits');return errors;}
