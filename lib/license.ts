@@ -1,3 +1,4 @@
+import { isAdministrator } from '@/lib/roles';
 import { createHash, randomBytes } from 'node:crypto';
 import { ObjectId, type Filter } from 'mongodb';
 import { db } from './db';
@@ -28,7 +29,7 @@ export async function userLicenseStatus(session:SignedInSession){
  return {status:record?effectiveStatus(record):'unassigned',isActive,requiresVerification:!isActive,license:record?publicLicense(record):null,verifiedUntil:isActive?verified!.verifiedUntil:null,activationLockedUntil:attempts?.lockedUntil&&attempts.lockedUntil>new Date()?attempts.lockedUntil:null};
 }
 export async function licenseAccess(session:SignedInSession){const status=await userLicenseStatus(session);return status.isActive?null:Response.json({error:'Verify an active license to access your workspace.',code:'LICENSE_REQUIRED'},{status:403});}
-export async function mustAuthenticate(request:Request,admin=false){const session=await getAuth().api.getSession({headers:request.headers});if(!session)throw new LicenseError(401,'Please sign in.','UNAUTHORIZED');if(admin&&session.user.role!=='admin')throw new LicenseError(403,'Administrator access required.','FORBIDDEN');return session;}
+export async function mustAuthenticate(request:Request,admin=false){const session=await getAuth().api.getSession({headers:request.headers});if(!session)throw new LicenseError(401,'Please sign in.','UNAUTHORIZED');if(admin&&!isAdministrator(session.user.role))throw new LicenseError(403,'Administrator access required.','FORBIDDEN');return session;}
 export function checkOrigin(request:Request){if(!authOrigins(process.env.BETTER_AUTH_URL).includes(request.headers.get('origin')||''))throw new LicenseError(403,'Invalid origin.','INVALID_ORIGIN');}
 export function licenseResponse(error:unknown){if(error instanceof LicenseError)return Response.json({error:error.message,code:error.code},{status:error.status,headers:{'Cache-Control':'no-store'}});if(error instanceof z.ZodError)return Response.json({error:error.issues[0]?.message||'Invalid license request',code:'INVALID_INPUT'},{status:400});console.error('License operation failed:',error instanceof Error?error.name:'Unknown error');return Response.json({error:'License service unavailable. Please try again.'},{status:503});}
 export const issueSchema=z.object({assignedEmail:z.email().transform(value=>value.trim().toLowerCase()),issuedToName:z.string().trim().min(2).max(100),maxDevices:z.coerce.number().int().min(1).max(10),expiresAt:z.string().datetime().nullable().optional(),notes:z.string().trim().max(1000).default('')}).refine(value=>!value.expiresAt||new Date(value.expiresAt)>new Date(),{message:'Expiry must be in the future',path:['expiresAt']});

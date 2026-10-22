@@ -10,7 +10,8 @@
     "test:cinematic": "node tests/dashboard.mjs",
     "test:login": "node tests/login-gallery.mjs",
     "test:dashboard": "node tests/dashboard.mjs",
-    "test:licenses": "node tests/license-profile.mjs"
+    "test:licenses": "node tests/license-profile.mjs",
+    "test:users": "node tests/admin-users.mjs"
   },
   "dependencies": {
     "@better-auth/mongo-adapter": "latest",

@@ -54,3 +54,13 @@ The topbar stays sticky during document scrolling. `DashboardScroll` runs Lenis 
 Browser checks cover dropdown anchoring and lack of a modal backdrop, read persistence, filters, notification-item/full-page navigation, count interpolation, exact final values, green palette, mobile smooth wheel scrolling and sticky navigation, plus the existing registration/database regression suite.
 
 See [LICENSES.md](LICENSES.md) for license issuance, session verification, desktop activation and bootstrap administration. MSME and CTE/CTO sections use `components/registration-table.tsx` with mint table headers, editable rows, uploads, save/reset/delete actions and calculated monthly production capacity.
+
+## User management
+
+Admin Dashboard now includes Create User and a paginated account directory with search and role filtering. Admins can create ADMIN, USER, MANAGER and CLIENT accounts. Super Admin accounts can also create SUPER ADMIN accounts. Email addresses are normalized and unique; accounts remain unverified until successful email OTP sign-in. Creation does not send email or issue a license automatically. Passwords are not used in the existing OTP flow.
+
+`GET/POST /api/admin/users` independently requires an authenticated, licensed Admin or Super Admin. `lib/roles.ts` centralizes role labels and administrator checks. Both administrator roles retain license management and administration access. User, Manager and Client retain owner-scoped workspace access and cannot create users. The generic Better Auth administrative mutation endpoints have no mutation permissions; user creation goes through the validated application endpoint to prevent bypassing Super Admin restrictions.
+
+No existing account is automatically promoted to Super Admin. To explicitly bootstrap that role, a repository operator can run `node scripts/setup-licenses.mjs existing-email@example.com super_admin`. This requires an existing account and uses the same ignored local environment configuration.
+
+`npm run test:users` verifies role selector options, browser creation, duplicate rejection, account search, role preservation through real OTP verification using a seeded temporary QA hash (no email sent), authorization and license checks, Super Admin elevation restrictions, alternate-endpoint bypass denial and mobile layout. Temporary test accounts are removed afterward.
