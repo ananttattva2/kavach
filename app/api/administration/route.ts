@@ -1,10 +1,11 @@
+import { licenseAccess } from '@/lib/license';
 import { getAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ObjectId } from 'mongodb';
 export async function GET(request:Request){
  try{
   const session=await getAuth().api.getSession({headers:request.headers});
-  if(!session)return Response.json({error:'Unauthorized'},{status:401});
+  if(!session)return Response.json({error:'Unauthorized'},{status:401});const licenseFailure=await licenseAccess(session);if(licenseFailure)return licenseFailure;
   if(session.user.role!=='admin')return Response.json({error:'Administrator access required'},{status:403});
   const sessionRows=await db().collection('session').find({}, {projection:{token:0}}).sort({createdAt:-1}).limit(50).toArray();
   const userIds=sessionRows.map(row=>row.userId).filter(Boolean);

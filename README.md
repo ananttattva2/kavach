@@ -14,7 +14,7 @@ Next.js 16 / React 19 client onboarding workspace for Anant Tattva.
 
 Passwordless email OTP using Better Auth and Microsoft Graph; five-minute, hashed, six-digit codes, attempt limits, database rate limiting, cookie sessions and Better Auth roles. Responsive animated login using GSAP and Motion. Protected dashboard, sidebar, overview and searchable client directory. Four onboarding tabs matching the supplied field groups, repeatable MSME / CTE / CTO / capacity / regulations entries, document uploads, draft saving, submission and editing saved records. MongoDB stores records and file bytes, scoped to the signed-in user. Uploads accept PDF/JPG/PNG up to 5 MB.
 
-All successfully verified email addresses can create their own isolated workspace account. Better Auth provides user/admin roles; no administrator is automatically assigned. There is no shared organisation client access or administrator management screen.
+All successfully verified email addresses can create their own isolated workspace account. Better Auth provides user/admin roles; no administrator is automatically assigned. Client access remains scoped to the signed-in account. Administrators manage licenses at `/licenses`; users verify their assigned key after sign-in before entering the dashboard. See [LICENSES.md](LICENSES.md).
 
 ## Configuration
 
@@ -26,7 +26,7 @@ Drafts allow incomplete fields. Submission requires company identity, authorised
 
 Local DNS note: this environment required DNS_SERVERS=1.1.1.1,8.8.8.8 for Atlas SRV records. Both Node DNS resolvers are configured only when this variable is set. Remove it if your hosting network uses its own DNS policy.
 
-Verification: production build and TypeScript passed; MongoDB ping passed; Graph credentials and Mail.Send permission verified; /login returned 200, /dashboard redirected signed-out users, protected APIs returned 401, and /api/auth/get-session returned 200 with null for a signed-out visitor. Browser visual checks and actual OTP inbox delivery have not been performed.
+Verification: production build and TypeScript passed; MongoDB ping passed; Graph credentials and Mail.Send permission verified; /login returned 200, /dashboard redirected signed-out users, protected APIs returned 401, and /api/auth/get-session returned 200 with null for a signed-out visitor. Dashboard, login gallery, license activation, profile and onboarding browser checks are included under `tests/`. Actual OTP inbox delivery requires a real recipient sign-in.
 
 
 See [CINEMATIC.md](CINEMATIC.md) for the cinematic module experience, assets and browser verification.

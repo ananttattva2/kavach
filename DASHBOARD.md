@@ -2,7 +2,7 @@
 
 ## Flow
 
-Sign-in redirects directly to `/dashboard`. `/modules` redirects to `/dashboard`; the former cinematic landing is no longer in the active user journey. The white login and module preview gallery remain available at `/login`.
+Sign-in opens `/license`; a verified session continues to `/dashboard`. `/modules` redirects to `/dashboard`; the former cinematic landing is no longer in the active user journey. The white login and module preview gallery remain available at `/login`.
 
 - Dashboard: live client totals and waste-stream counts, derived from MongoDB and scoped to the signed-in account. No demo counts are inserted. Legacy client records created before classification are counted as Plastic / PIBO, matching the original PIBO-only onboarding form.
 - Add Client: choose Plastic, E-Waste, Battery, ELV or Used Oil from the illustrated workspace cards. Battery, ELV and Used Oil remain unavailable.
@@ -14,9 +14,9 @@ Sign-in redirects directly to `/dashboard`. `/modules` redirects to `/dashboard`
 
 Dashboard, All Client, KAVACH Audit (five waste streams), Client Connect, and Administration (Admin Dashboard, KPI Dashboard, Company Name, Login Logs, Licenses). Groups expand/collapse; desktop sidebar collapses to icons; mobile uses a dismissible navigation drawer. Active states follow the URL, so navigation supports browser back/forward and refresh.
 
-All Client searches saved records, exports CSV and opens records for editing. Client Connect displays saved authorised/coordinating contacts with mailto/tel links. Licenses lists certificates uploaded to the account's client documents.
+All Client searches saved records, exports CSV and opens records for editing. Client Connect displays saved authorised/coordinating contacts with mailto/tel links. Licenses opens license issuance and revocation for administrators; members see their own license status.
 
-Admin Dashboard, KPI Dashboard, Company Name and Login Logs require an existing Better Auth `admin` role. Regular accounts see an access-required page; the administration API independently returns 403. No existing account is promoted automatically. Login Logs shows recent session creation records, not failed login attempts. Administration response projections exclude session tokens. Profile settings saves the account display name and provides sign out. The notification panel shows actual unfinished draft count.
+Admin Dashboard, KPI Dashboard, Company Name and Login Logs require an existing Better Auth `admin` role. Regular accounts see an access-required page; the administration API independently returns 403. Administrator promotion is an explicit maintenance operation; the requested support account was promoted with user authorization. Login Logs shows recent session creation records, not failed login attempts. Administration response projections exclude session tokens. Profile settings opens `/profile`, with personal information, photo upload, session controls and notification preferences. The notification dropdown derives updates from actual client records.
 
 ## UI and assets
 
@@ -28,7 +28,7 @@ Page changes and expanding navigation use Motion. Card/image interactions animat
 
 - `/api/dashboard/summary`: authenticated per-account aggregation, including legacy classifications.
 - `/api/administration`: admin-only aggregate counts, company names and recent sessions.
-- `/api/profile`: authenticated, origin-checked display-name updates through Better Auth.
+- `/api/profile`: authenticated, origin-checked personal details and preferences; display-name updates use Better Auth.
 - `/api/clients`: existing owner-scoped saving, extended with validated classification fields. Upcoming/invalid category combinations are rejected.
 
 Run `npm run build`, then `npm start` (port 9000). In a second terminal, run `npm run test:dashboard`. Browser tests use temporary member/admin accounts and client records, always cleaned up in `finally`. Tests cover redirects, totals, all ten categories, MongoDB save/read, client search/edit, administrator boundaries, session-token exclusion, mobile sidebar and reduced motion. The login redirect UI check mocks OTP responses and sends no email. Screenshots are saved to ignored `artifacts/`.
@@ -52,3 +52,5 @@ The bell now opens an anchored, nonmodal notification dropdown with All/Unread t
 The topbar stays sticky during document scrolling. `DashboardScroll` runs Lenis through a single GSAP ticker callback with `autoRaf: false`; dropdown, sidebar, dialog and table scrolling remain native. Touch scrolling is native. Route changes reset scroll position; unmount removes the ticker and destroys Lenis. Reduced motion uses native scrolling without the Lenis controller.
 
 Browser checks cover dropdown anchoring and lack of a modal backdrop, read persistence, filters, notification-item/full-page navigation, count interpolation, exact final values, green palette, mobile smooth wheel scrolling and sticky navigation, plus the existing registration/database regression suite.
+
+See [LICENSES.md](LICENSES.md) for license issuance, session verification, desktop activation and bootstrap administration. MSME and CTE/CTO sections use `components/registration-table.tsx` with mint table headers, editable rows, uploads, save/reset/delete actions and calculated monthly production capacity.

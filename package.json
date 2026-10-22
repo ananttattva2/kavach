@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test:cinematic": "node tests/dashboard.mjs",
     "test:login": "node tests/login-gallery.mjs",
-    "test:dashboard": "node tests/dashboard.mjs"
+    "test:dashboard": "node tests/dashboard.mjs",
+    "test:licenses": "node tests/license-profile.mjs"
   },
   "dependencies": {
     "@better-auth/mongo-adapter": "latest",
@@ -31,7 +32,8 @@
     "react-hook-form": "latest",
     "tailwind-merge": "latest",
     "zod": "latest",
-    "zustand": "latest"
+    "zustand": "latest",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",

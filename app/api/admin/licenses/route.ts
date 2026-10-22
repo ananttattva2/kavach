@@ -1,0 +1,4 @@
+import { issueLicense,issueSchema,mustAuthenticate,checkOrigin,licenseResponse,publicLicense } from '@/lib/license';
+import { db } from '@/lib/db';
+export async function GET(request:Request){try{await mustAuthenticate(request,true);const status=new URL(request.url).searchParams.get('status');const records=await db().collection<import('@/lib/license').LicenseRecord>('licenses').find({}).sort({createdAt:-1}).toArray();const items=records.map(publicLicense).filter(item=>!status||status==='all'||item.status===status);return Response.json(items,{headers:{'Cache-Control':'no-store'}});}catch(error){return licenseResponse(error);}}
+export async function POST(request:Request){try{checkOrigin(request);const session=await mustAuthenticate(request,true);const data=issueSchema.parse(await request.json());return Response.json(await issueLicense(data,session),{status:201,headers:{'Cache-Control':'no-store'}});}catch(error){return licenseResponse(error);}}

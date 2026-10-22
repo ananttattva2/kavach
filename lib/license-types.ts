@@ -1,0 +1,2 @@
+export type LicenseSummary={id:string;status:string;assignedEmail:string;issuedToName:string;keyLabel:string;maxDevices:number;expiresAt:string|null;notes:string;createdAt:string;lastValidatedAt:string|null;activatedDevices:{deviceId:string;deviceName:string;appVersion:string;activatedAt:string;lastValidatedAt:string}[]};
+export type UserLicenseStatus={isActive:boolean;requiresVerification:boolean;status:string;license:LicenseSummary|null;verifiedUntil:string|null;activationLockedUntil:string|null};

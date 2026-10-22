@@ -8,7 +8,7 @@ import type { NotificationData, WorkspaceNotification } from '@/lib/notification
 import './notifications.css';
 
 type Props={onOpen:(notification:WorkspaceNotification)=>void;onViewAll:()=>void};
-async function getNotifications():Promise<NotificationData>{const res=await fetch('/api/notifications');const data=await res.json();if(!res.ok)throw new Error(data.error||'Unable to load notifications');return data;}
+async function getNotifications():Promise<NotificationData>{const res=await fetch('/api/notifications');const data=await res.json();if(res.status===403&&data.code==='LICENSE_REQUIRED')window.location.replace('/license');if(!res.ok)throw new Error(data.error||'Unable to load notifications');return data;}
 function useNotifications(){
  const cache=useQueryClient();const query=useQuery({queryKey:['notifications'],queryFn:getNotifications,refetchInterval:60000});
  const mutation=useMutation({mutationFn:async(ids:string[])=>{const res=await fetch('/api/notifications',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})});if(!res.ok)throw new Error('Could not mark notifications as read');},onMutate:async ids=>{await cache.cancelQueries({queryKey:['notifications']});const previous=cache.getQueryData<NotificationData>(['notifications']);if(previous){const items=previous.items.map(item=>ids.includes(item.id)?{...item,read:true}:item);cache.setQueryData(['notifications'],{items,unreadCount:items.filter(item=>!item.read).length});}return{previous};},onError:(_error,_ids,context)=>{if(context?.previous)cache.setQueryData(['notifications'],context.previous);},onSettled:()=>cache.invalidateQueries({queryKey:['notifications']})});
