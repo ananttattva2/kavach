@@ -32,3 +32,11 @@ Page changes and expanding navigation use Motion. Card/image interactions animat
 - `/api/clients`: existing owner-scoped saving, extended with validated classification fields. Upcoming/invalid category combinations are rejected.
 
 Run `npm run build`, then `npm start` (port 9000). In a second terminal, run `npm run test:dashboard`. Browser tests use temporary member/admin accounts and client records, always cleaned up in `finally`. Tests cover redirects, totals, all ten categories, MongoDB save/read, client search/edit, administrator boundaries, session-token exclusion, mobile sidebar and reduced motion. The login redirect UI check mocks OTP responses and sends no email. Screenshots are saved to ignored `artifacts/`.
+
+## Reference refinements and blob buttons
+
+The dashboard now uses a compact welcome banner, orange live counts and illustrated client/waste cards. Workspace selection places the Dashboard return action beside the date in the welcome banner. The supplied KAVACH logo was adapted into a transparent forest-green asset at `public/images/kavach-logo.webp` and is rendered by the shared `KavachBrand` component, including login and sidebar branding.
+
+`components/ui/blob-button.tsx` converts the supplied gooey-button example into a reusable React component. Four staggered blobs rise on hover or visible keyboard focus. A single SVG goo filter is defined once in the root layout. The effect is confined to buttons; disabled Upcoming buttons remain static and reduced motion removes transitions. Active dashboard, workspace and registration actions share this treatment. `portfolio-clients.webp` supplies the new client-record illustration; the existing stream illustrations are reused.
+
+Dashboard browser verification additionally checks the four-blob hover transform, disabled availability states, reduced-motion behavior and single shared SVG filter.
