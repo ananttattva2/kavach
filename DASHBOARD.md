@@ -40,3 +40,15 @@ The dashboard now uses a compact welcome banner, orange live counts and illustra
 `components/ui/blob-button.tsx` converts the supplied gooey-button example into a reusable React component. Four staggered blobs rise on hover or visible keyboard focus. A single SVG goo filter is defined once in the root layout. The effect is confined to buttons; disabled Upcoming buttons remain static and reduced motion removes transitions. Active dashboard, workspace and registration actions share this treatment. `portfolio-clients.webp` supplies the new client-record illustration; the existing stream illustrations are reused.
 
 Dashboard browser verification additionally checks the four-blob hover transform, disabled availability states, reduced-motion behavior and single shared SVG filter.
+
+## Notifications, counting and scrolling
+
+The bell now opens an anchored, nonmodal notification dropdown with All/Unread tabs, grouped timestamps, unread indicators, mark-all-read, individual item navigation and a full notification page. It has no fullscreen backdrop; Escape, the close control and outside clicks dismiss it. The profile dialog remains modal and is centered explicitly.
+
+`/api/notifications` derives activity from the account's latest 30 client records and the account welcome event. It includes registration creation, unfinished drafts and uploaded documents; it does not fabricate scheduled audits or report-ready events. Per-account read IDs persist in the MongoDB `notification_state` collection. The write endpoint validates origin and session. Onboarding saves invalidate notification data; visible activity refreshes every minute.
+
+`AnimatedCount` animates real portfolio totals through intermediate values when visible and whenever totals change. It stops previous animations on changes/unmount, displays accurate zero values and respects reduced motion. Dashboard accents, counts, links and the Add Client action use forest green and mint instead of orange.
+
+The topbar stays sticky during document scrolling. `DashboardScroll` runs Lenis through a single GSAP ticker callback with `autoRaf: false`; dropdown, sidebar, dialog and table scrolling remain native. Touch scrolling is native. Route changes reset scroll position; unmount removes the ticker and destroys Lenis. Reduced motion uses native scrolling without the Lenis controller.
+
+Browser checks cover dropdown anchoring and lack of a modal backdrop, read persistence, filters, notification-item/full-page navigation, count interpolation, exact final values, green palette, mobile smooth wheel scrolling and sticky navigation, plus the existing registration/database regression suite.
