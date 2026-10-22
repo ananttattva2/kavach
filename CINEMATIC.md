@@ -3,7 +3,7 @@
 ## Routes and port
 
 - `npm run dev` / `npm start`: http://localhost:9000
-- `/login`: train-window login with real HTML form and the existing Graph email OTP flow.
+- `/login`: white split layout with the existing Graph email OTP form on the left and a five-module interactive mosaic on the right. Each tile reveals its corresponding recycling image on hover or keyboard focus; click/tap selects the preview. Upcoming labels remain visible.
 - Successful OTP sign-in redirects to protected `/modules`.
 - `/dashboard` stays the existing protected client onboarding workspace. Its brand links back to `/modules`.
 - Plastic and E-Waste link to the existing workspace as `/dashboard?module=plastic` and `/dashboard?module=ewaste`. The current project has one shared onboarding dashboard, not separate waste-processing dashboards. The query keeps the selected module in the URL for future module-specific behavior.
@@ -19,7 +19,7 @@ Lenis runs with `autoRaf: false` through the GSAP ticker only. Unmount removes i
 
 All final assets are local WebP files in `public/images/` (about 1.9 MB total). The first scene is high-priority; later images are prepared eagerly at low priority. `lib/modules.ts` contains the scene paths, copy, status and destination for easy replacement.
 
-- `login-train.webp`: generated train interior and Alpine landscape, no baked-in form or text.
+- `login-train.webp`: retained earlier train interior asset, no longer used by the current white login.
 - `plastic.webp`, `ewaste.webp`, `battery.webp`, `elv.webp`, `oil.webp`: individual generated cinematic recycling scenes, consistent forest/charcoal palette.
 - `foreground.webp`: actual alpha-transparent botanical edge layer. Shared across all five scenes to maintain art direction.
 
@@ -32,3 +32,9 @@ The supplied chat attachment was a login screenshot; no reference video or separ
 Run the app on port 9000, then `npm run test:cinematic` in a second terminal. Requires `.env.local` and Atlas access. Tests use installed Microsoft Edge on Windows, otherwise Playwright Chromium. A temporary isolated QA account, session and draft are created and always removed in `finally`; no OTP email is sent. Session secrets are never printed or written to artifacts.
 
 Checks cover desktop forward/reverse scroll, layer transform differences, indicator navigation, disabled upcoming modules, pinned-section release, preserved dashboard destination, protected draft save/read, mobile stacking and no overflow, reduced-motion native scrolling, and browser JavaScript errors. Screenshots are saved to ignored `artifacts/`. Actual OTP delivery still requires entering a real recipient email at login.
+
+## White login gallery
+
+`components/login-module-gallery.tsx` renders five preview tiles using the existing scene assets. `app/login/login.css` defines the white split layout, desktop mosaic, mobile stacking, image reveals and reduced-motion behavior. The gallery is a preview; users still sign in before opening dashboard modules. The post-login cinematic page is unchanged.
+
+Run `npm run test:login` with the app running to verify five hover previews, keyboard/tap selection, availability status, mobile overflow, reduced motion and OTP form transitions. Auth responses are mocked in this focused UI test; no email is sent.

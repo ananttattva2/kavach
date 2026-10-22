@@ -31,7 +31,7 @@ try {
   const page = await desktop.newPage();
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(base + '/login');
-  await page.locator('.train-backdrop').evaluate(img => img.decode());
+  await page.locator('.mosaic-plastic .mosaic-image').evaluate(img => img.decode());
   await page.waitForTimeout(1000);
   await page.screenshot({ path: 'artifacts/login-desktop.png' });
   assert.equal(await page.title(), 'Kavach — Client Workspace');
@@ -103,7 +103,7 @@ try {
   const phone = await mobile.newPage();
   phone.on('pageerror', error => errors.push(error.message));
   await phone.goto(base + '/login');
-  await phone.locator('.train-backdrop').evaluate(img => img.decode());
+  await phone.locator('.mosaic-plastic .mosaic-image').evaluate(img => img.decode());
   await phone.waitForTimeout(1000);
   await phone.screenshot({ path: 'artifacts/login-mobile.png' });
   assert.ok(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

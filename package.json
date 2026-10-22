@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start --port 9000",
     "typecheck": "tsc --noEmit",
-    "test:cinematic": "node tests/cinematic.mjs"
+    "test:cinematic": "node tests/cinematic.mjs",
+    "test:login": "node tests/login-gallery.mjs"
   },
   "dependencies": {
     "@better-auth/mongo-adapter": "latest",
