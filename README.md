@@ -6,7 +6,7 @@ Next.js 16 / React 19 client onboarding workspace for Anant Tattva.
 
 1. `npm install`
 2. Configure `.env.local` using `.env.example` (credentials are already configured locally).
-3. `npm run dev`, then visit http://localhost:3000.
+3. `npm run dev`, then visit http://localhost:9000.
 
 `npm run build` creates a production build. `npm run typecheck` checks TypeScript. `node scripts/check-services.mjs` verifies MongoDB connectivity and Microsoft Graph credentials without sending mail.
 
@@ -27,3 +27,6 @@ Drafts allow incomplete fields. Submission requires company identity, authorised
 Local DNS note: this environment required DNS_SERVERS=1.1.1.1,8.8.8.8 for Atlas SRV records. Both Node DNS resolvers are configured only when this variable is set. Remove it if your hosting network uses its own DNS policy.
 
 Verification: production build and TypeScript passed; MongoDB ping passed; Graph credentials and Mail.Send permission verified; /login returned 200, /dashboard redirected signed-out users, protected APIs returned 401, and /api/auth/get-session returned 200 with null for a signed-out visitor. Browser visual checks and actual OTP inbox delivery have not been performed.
+
+
+See [CINEMATIC.md](CINEMATIC.md) for the cinematic module experience, assets and browser verification.

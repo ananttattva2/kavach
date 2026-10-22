@@ -1,20 +1,88 @@
 'use client';
-import { useEffect,useRef,useState } from 'react';
-import { motion,AnimatePresence } from 'motion/react';
+
+import { useEffect, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { ArrowRight,ArrowLeft,ShieldCheck,Mail,Leaf,LoaderCircle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, ShieldCheck, Mail, LoaderCircle, X } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { authClient } from '@/lib/auth-client';
-import { Button } from '@/components/ui/button';
-const schema=z.object({email:z.email('Please enter a valid work email')});
-export default function Login(){
- const hero=useRef<HTMLDivElement>(null); const [step,setStep]=useState(0),[email,setEmail]=useState(''),[otp,setOtp]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[cooldown,setCooldown]=useState(0);
- const {register,handleSubmit,formState:{errors}}=useForm({resolver:zodResolver(schema)});
- useEffect(()=>{if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;const ctx=gsap.context(()=>{gsap.from('.hero-copy > *',{y:28,opacity:0,duration:1,stagger:.14});gsap.to('.orbit',{rotation:360,duration:100,repeat:-1,ease:'none'});},hero);return()=>ctx.revert();},[]);
- useEffect(()=>{if(!cooldown)return;const timer=setTimeout(()=>setCooldown(c=>c-1),1000);return()=>clearTimeout(timer);},[cooldown]);
- async function send(value:string){setBusy(true);setError('');try{const result=await authClient.emailOtp.sendVerificationOtp({email:value,type:'sign-in'});if(result.error)throw new Error(result.error.message||'Could not send code');setEmail(value);setStep(1);setCooldown(60);}catch(e){setError(e instanceof Error?e.message:'Please try again');}finally{setBusy(false);}}
- async function verify(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{const result=await authClient.signIn.emailOtp({email,otp});if(result.error)throw new Error(result.error.message||'Invalid code');window.location.assign('/dashboard');}catch(e){setError(e instanceof Error?e.message:'Please try again');setBusy(false);}}
- return <main className="login"><section className="login-story" ref={hero}><a className="brand" href="/login"><span className="brand-icon"><Leaf size={23}/></span>kavach<span className="brand-dot">.</span></a><div className="hero-copy"><div className="eyebrow light"><span/> THE CLIENT WORKSPACE</div><h1>Good beginnings.<br/><em>Greener futures.</em></h1><p>A little less paperwork.<br/>A lot more possibility.</p></div><div className="botanical"><div className="orbit"/><div className="stem"/><div className="leaf l1"/><div className="leaf l2"/><div className="leaf l3"/><div className="leaf l4"/><div className="pot"><span>K</span></div><div className="plant-shadow"/><div className="floating-note"><ShieldCheck size={18}/><div>Rooted in trust<small>Built for your next chapter</small></div></div></div><footer><span>AN ANANT TATTVA WORKSPACE</span><span>Thoughtful. Secure. Connected.</span></footer></section><section className="login-panel"><div className="login-top"><span>YOUR WORK, SIMPLIFIED</span><ShieldCheck size={18}/></div><AnimatePresence mode="wait"><motion.div className="login-form" key={step} initial={{opacity:0,y:15}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} transition={{duration:.25}}><div className="form-symbol">{step?<ShieldCheck/>:<Leaf/>}</div><div className="eyebrow">{step?'ONE LAST LITTLE STEP':'WELCOME TO KAVACH'}</div><h2>{step?'Check your inbox.':'Make room for\nbetter work.'}</h2><p className="muted">{step?<>We sent a 6-digit code to <strong>{email}</strong></>:'Your clients, documents and compliance. Beautifully together.'}</p>{step?<form onSubmit={verify}><label htmlFor="otp">Verification code</label><input id="otp" className="otp-input" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={otp} onChange={e=>setOtp(e.target.value.replace(/\D/g,''))} placeholder="000000" autoFocus required/><div className="code-help"><span>Code expires in 5 minutes</span><button type="button" disabled={busy||cooldown>0} onClick={()=>send(email)}>{cooldown?`Resend in ${cooldown}s`:'Resend code'}</button></div><Button disabled={busy||otp.length!==6} className="full">{busy?<LoaderCircle className="spin"/>:<>Verify & enter workspace<ArrowRight size={18}/></>}</Button><button className="back-link" type="button" onClick={()=>{setStep(0);setError('');setOtp('');}}><ArrowLeft size={15}/> Use a different email</button></form>:<form onSubmit={handleSubmit(({email})=>send(email))}><label htmlFor="email">Work email address</label><div className="input-icon"><Mail size={18}/><input id="email" placeholder="you@company.com" autoComplete="email" {...register('email')}/></div>{errors.email&&<p className="error">{errors.email.message}</p>}<Button disabled={busy} className="full">{busy?<LoaderCircle className="spin"/>:<>Continue with email<ArrowRight size={18}/></>}</Button><div className="passwordless"><ShieldCheck size={15}/> No passwords to remember. Just a secure code.</div></form>}{error&&<p role="alert" className="error">{error}</p>}<div className="login-divider"/><div className="trust-row"><div className="avatars"><i>AT</i><i>AK</i><i>SM</i></div><p>A calmer way to manage<br/><strong>every client relationship.</strong></p></div></motion.div></AnimatePresence><div className="login-bottom"><span>© {new Date().getFullYear()} Anant Tattva</span><span><span className="status-dot"/> Secure workspace</span></div></section></main>;
+import { KavachBrand } from '@/components/kavach-brand';
+import './login.css';
+
+const schema = z.object({ email: z.email('Please enter a valid email address') });
+gsap.registerPlugin(useGSAP);
+
+export default function Login() {
+  const root = useRef<HTMLElement>(null);
+  const help = useRef<HTMLDialogElement>(null);
+  const [step, setStep] = useState(0);
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [cooldown, setCooldown] = useState(0);
+  const { register, handleSubmit, setFocus, formState: { errors } } = useForm({ resolver: zodResolver(schema) });
+
+  useGSAP(() => {
+    const mm = gsap.matchMedia();
+    mm.add('(prefers-reduced-motion: no-preference)', () => {
+      gsap.from('.train-login-card', { opacity: 0, y: 16, duration: .8, ease: 'power2.out' });
+      gsap.from('.train-backdrop', { scale: 1.035, duration: 2.5, ease: 'power2.out' });
+    });
+    return () => mm.revert();
+  }, { scope: root });
+
+  useEffect(() => {
+    if (!cooldown) return;
+    const timer = window.setTimeout(() => setCooldown(value => value - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [cooldown]);
+
+  async function send(value: string) {
+    setBusy(true); setError('');
+    try {
+      const result = await authClient.emailOtp.sendVerificationOtp({ email: value, type: 'sign-in' });
+      if (result.error) throw new Error(result.error.message || 'Could not send your code. Please try again.');
+      setEmail(value); setStep(1); setCooldown(60);
+    } catch (err) { setError(err instanceof Error ? err.message : 'Please try again.'); }
+    finally { setBusy(false); }
+  }
+
+  async function verify(event: React.FormEvent) {
+    event.preventDefault(); setBusy(true); setError('');
+    try {
+      const result = await authClient.signIn.emailOtp({ email, otp });
+      if (result.error) throw new Error(result.error.message || 'Please check the code and try again.');
+      window.location.assign('/modules');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Please try again.'); setBusy(false); }
+  }
+
+  return <main className="train-login" ref={root}>
+    <img className="train-backdrop" src="/images/login-train.webp" alt="" width={1920} height={1080} fetchPriority="high" decoding="async"/>
+    <div className="train-vignette"/>
+    <header className="train-header"><KavachBrand href="/login"/><button className="train-help" onClick={() => help.current?.showModal()}>Need help?</button></header>
+    <section className="train-login-card" aria-labelledby="login-title">
+      <div className="train-eyebrow">YOUR COMPLIANCE COMPANION</div>
+      <h1 id="login-title">{step ? 'A secure start.' : 'Welcome to KAVACH'}</h1>
+      <p className="train-description">{step ? <>Enter the code sent to <strong>{email}</strong></> : 'A clearer path to responsible waste management.'}</p>
+      {step ? <form onSubmit={verify} className="train-form">
+        <label htmlFor="otp" className="train-field-label">Your 6-digit verification code</label>
+        <input id="otp" className="train-otp" aria-label="Verification code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={otp} onChange={event => setOtp(event.target.value.replace(/\D/g, ''))} placeholder="000000" autoFocus required disabled={busy}/>
+        <div className="train-code-help"><span>Expires in 5 minutes</span><button type="button" disabled={busy || cooldown > 0} onClick={() => send(email)}>{cooldown ? `Resend in ${cooldown}s` : 'Resend code'}</button></div>
+        <button className="train-submit" disabled={busy || otp.length !== 6}>{busy ? <LoaderCircle size={19} className="spin"/> : <>Enter workspace<ArrowRight size={19}/></>}</button>
+        <button type="button" className="train-back" disabled={busy} onClick={() => { setStep(0); setOtp(''); setError(''); }}><ArrowLeft size={14}/>Use a different email</button>
+      </form> : <form onSubmit={handleSubmit(({ email }) => send(email))} className="train-form">
+        <label className="train-field" htmlFor="email"><Mail size={20} strokeWidth={1.5}/><input id="email" type="email" autoComplete="email" placeholder="Email address" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'email-error' : undefined} {...register('email')} disabled={busy}/></label>
+        {errors.email && <p id="email-error" className="train-error">{errors.email.message}</p>}
+        <div className="train-security"><ShieldCheck size={20} strokeWidth={1.4}/><div><strong>Secure, password-free sign in</strong><span>We’ll send a one-time code to your email.</span></div></div>
+        <button className="train-submit" disabled={busy}>{busy ? <><LoaderCircle size={18} className="spin"/>Sending your code…</> : <>Sign in<ArrowRight size={19}/></>}</button>
+      </form>}
+      {error && <p role="alert" className="train-error">{error}</p>}
+      <div className="train-card-bottom">{step ? <><ShieldCheck size={14}/>Your code stays private. Never share it.</> : <>New to KAVACH? <button onClick={() => setFocus('email')}>Create an account</button></>}</div>
+    </section>
+    <footer className="train-footer">Protecting resources. Enabling responsibility.</footer>
+    <dialog ref={help} className="train-help-dialog" aria-labelledby="help-title" onClick={event => { if (event.target === event.currentTarget) help.current?.close(); }}><button aria-label="Close help" className="train-dialog-close" onClick={() => help.current?.close()}><X size={20}/></button><ShieldCheck size={28}/><h2 id="help-title">Your next chapter starts here.</h2><p>Enter your email to receive a secure sign-in code. New accounts are created when you verify your email. If you need help, contact our team.</p><a href="mailto:crm@ananttattva.com">crm@ananttattva.com<ArrowRight size={16}/></a></dialog>
+  </main>;
 }
