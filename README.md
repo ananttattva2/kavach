@@ -32,3 +32,5 @@ Verification: production build and TypeScript passed; MongoDB ping passed; Graph
 See [CINEMATIC.md](CINEMATIC.md) for the cinematic module experience, assets and browser verification.
 
 Local sign-in: use http://localhost:9000/login. When BETTER_AUTH_URL is a loopback URL, explicit localhost/127.0.0.1 origins on ports 3000 and 9000 are trusted for compatibility with older local tabs. Production URLs trust only their configured origin. Run node tests/auth-origins.mjs with the server running to verify this boundary without sending mail.
+
+Current signed-in flow: see [DASHBOARD.md](DASHBOARD.md) for the direct dashboard, sidebar, waste-stream registration categories and verification.

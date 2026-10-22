@@ -56,7 +56,7 @@ export default function Login() {
     try {
       const result = await authClient.signIn.emailOtp({ email, otp });
       if (result.error) throw new Error(result.error.message || 'Please check the code and try again.');
-      window.location.assign('/modules');
+      window.location.assign('/dashboard');
     } catch (err) { setError(err instanceof Error ? err.message : 'Please try again.'); setBusy(false); }
   }
 
