@@ -12,7 +12,6 @@ import {
   LoaderCircle,
   LockKeyhole,
   MessageSquare,
-  Pencil,
   Plus,
   RotateCcw,
   Save,
@@ -386,19 +385,38 @@ export function PreAuditWorkspace({
       if (content.includes("[Auditor Company Address]")) {
         const address = verificationAddress.trim();
         if (!address) {
-          setErrors((previous) => ({ ...previous, "verify-letter": "Enter the auditor company address before verifying." }));
+          setErrors((previous) => ({
+            ...previous,
+            "verify-letter":
+              "Enter the auditor company address before verifying.",
+          }));
           return;
         }
         if (address !== record.audit.firm.address && record.canConfigure) {
-          const configured = await run({ action: "assign", auditorId: record.audit.auditor.id, firmName: record.audit.firm.name, firmAddress: address }, "verify-letter");
+          const configured = await run(
+            {
+              action: "assign",
+              auditorId: record.audit.auditor.id,
+              firmName: record.audit.firm.name,
+              firmAddress: address,
+            },
+            "verify-letter",
+          );
           if (!configured) return;
           record = configured;
         }
         if (address !== record.audit.firm.address) {
-          setErrors((previous) => ({ ...previous, "verify-letter": "Ask an administrator to save the auditor company address in Audit settings." }));
+          setErrors((previous) => ({
+            ...previous,
+            "verify-letter":
+              "Ask an administrator to save the auditor company address in Audit settings.",
+          }));
           return;
         }
-        content = content.replaceAll("[Auditor Company Address]", () => address);
+        content = content.replaceAll(
+          "[Auditor Company Address]",
+          () => address,
+        );
       }
       const saved = await run(
         {
@@ -413,7 +431,11 @@ export function PreAuditWorkspace({
       const item = saved.summary.items.find((i) => i.key === "letter")!;
       if (item.missing.length) {
         setVerifyItem(item);
-        setErrors((previous) => ({ ...previous, "verify-letter": "Verification is still pending. Resolve the requirements listed above." }));
+        setErrors((previous) => ({
+          ...previous,
+          "verify-letter":
+            "Verification is still pending. Resolve the requirements listed above.",
+        }));
         return;
       }
       const verified = await run(
@@ -428,12 +450,12 @@ export function PreAuditWorkspace({
   function card(item: AuditItem) {
     const waiting = busy.includes(item.key);
     return (
-      <section
-        className="validation-card"
+      <tr
+        className="validation-card validation-table-row"
         id={"audit-item-" + item.key}
         key={item.key}
       >
-        <header>
+        <td className="record-identity">
           <div>
             <h3>
               {item.verified ? (
@@ -457,155 +479,176 @@ export function PreAuditWorkspace({
                 ? "Pending"
                 : "Not Applicable"}
           </span>
-        </header>
-        <dl className="validation-fields">
-          {Object.entries(item.fields).map(([field, value]) => (
-            <div key={field}>
-              <dt>{field}</dt>
-              <dd>{value || "Not provided"}</dd>
+        </td>
+        <td className="record-details">
+          <dl className="validation-fields">
+            {Object.entries(item.fields).map(([field, value]) => (
+              <div key={field}>
+                <dt>{field}</dt>
+                <dd>{value || "Not provided"}</dd>
+              </div>
+            ))}
+          </dl>
+        </td>
+        <td className="record-review">
+          {item.naReason && <p className="na-reason">{item.naReason}</p>}
+          {item.missing.length > 0 && (
+            <div className="item-blockers">
+              <strong>Needs attention</strong>
+              <ul>
+                {item.missing.map((m, i) => (
+                  <li key={i}>{m}</li>
+                ))}
+              </ul>
             </div>
-          ))}
-        </dl>
-        {item.naReason && <p className="na-reason">{item.naReason}</p>}
-        {item.missing.length > 0 && (
-          <div className="item-blockers">
-            <strong>Needs attention</strong>
-            <ul>
-              {item.missing.map((m, i) => (
-                <li key={i}>{m}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {item.stale && (
-          <p className="stale-note">
-            Content changed after verification. Review and verify again.
-          </p>
-        )}
-        {item.verified && item.check && (
-          <p className="verification-meta">
-            <Check size={14} />
-            Verified by {item.check.verifiedBy.name} ·{" "}
-            {dateTime(item.check.verifiedAt)}
-          </p>
-        )}
-        {item.remark?.text && (
-          <blockquote>
-            <MessageSquare size={14} />
-            <div>
-              {item.remark.text}
-              <small>
-                {item.remark.by} · {dateTime(item.remark.at)}
-              </small>
-            </div>
-          </blockquote>
-        )}
-        <footer>
-          {item.fileId && (
-            <>
-              <a
-                href={"/api/files?id=" + item.fileId + "&preview=1"}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Preview
-              </a>
-              <a href={"/api/files?id=" + item.fileId}>Download</a>
-            </>
           )}
-          {model?.canVerify && (
-            <>
-              <Button
-                variant="outline"
-                disabled={waiting || !item.editableFields.length}
-                onClick={() => edit(item)}
-              >
-                <Pencil size={13} />
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                disabled={waiting}
-                onClick={() => remark(item)}
-              >
-                <MessageSquare size={13} />
-                {item.remark?.text ? "Edit remark" : "Add remark"}
-              </Button>
-              {((item.documentType && item.recordId) ||
-                (item.table &&
-                  ["cte", "cto", "msme"].includes(item.table))) && (
-                <label className="audit-upload">
-                  <Upload size={13} />
-                  {waiting
-                    ? "Saving…"
-                    : item.fileId
-                      ? "Replace file"
-                      : "Upload file"}
-                  <input
-                    type="file"
-                    accept=".pdf,.png,.jpg,.jpeg"
-                    disabled={waiting}
-                    onChange={(e) => {
-                      upload(item, e.target.files?.[0]);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-              )}
-              {item.recordId && (
+          {item.stale && (
+            <p className="stale-note">
+              Content changed after verification. Review and verify again.
+            </p>
+          )}
+          {item.verified && item.check && (
+            <p className="verification-meta">
+              <Check size={14} />
+              Verified by {item.check.verifiedBy.name} ·{" "}
+              {dateTime(item.check.verifiedAt)}
+            </p>
+          )}
+          {item.remark?.text && (
+            <blockquote>
+              <MessageSquare size={14} />
+              <div>
+                {item.remark.text}
+                <small>
+                  {item.remark.by} · {dateTime(item.remark.at)}
+                </small>
+              </div>
+            </blockquote>
+          )}
+        </td>
+        <td className="record-actions">
+          <footer>
+            {item.fileId && (
+              <>
+                <a
+                  href={"/api/files?id=" + item.fileId + "&preview=1"}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Preview
+                </a>
+                <a href={"/api/files?id=" + item.fileId}>Download</a>
+              </>
+            )}
+            {model?.canVerify && (
+              <>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   disabled={waiting}
-                  aria-label={"Delete " + item.title}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Delete this record and its verification/remark?",
+                  onClick={() => remark(item)}
+                >
+                  <MessageSquare size={13} />
+                  {item.remark?.text ? "Edit remark" : "Add remark"}
+                </Button>
+                {!item.fileId &&
+                  ((item.documentType && item.recordId) ||
+                    (item.table &&
+                      ["cte", "cto", "msme"].includes(item.table))) && (
+                    <label className="audit-upload">
+                      <Upload size={13} />
+                      {waiting ? "Saving…" : "Upload file"}
+                      <input
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg"
+                        disabled={waiting}
+                        onChange={(e) => {
+                          upload(item, e.target.files?.[0]);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  )}
+                {item.recordId && (
+                  <Button
+                    variant="ghost"
+                    disabled={waiting}
+                    aria-label={"Delete " + item.title}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "Delete this record and its verification/remark?",
+                        )
                       )
-                    )
-                      run({ action: "remove-record", key: item.key }, item.key);
-                  }}
-                >
-                  <Trash2 size={14} />
-                </Button>
-              )}
-              {item.required && (
-                <Button
-                  className="verify-action"
-                  disabled={waiting || item.verified}
-                  title={item.missing.join("; ")}
-                  onClick={() => verify(item)}
-                >
-                  {waiting ? (
-                    <LoaderCircle size={14} className="spin" />
-                  ) : (
-                    <ShieldCheck size={14} />
-                  )}{" "}
-                  {item.verified ? "Verified" : "Verify"}
-                </Button>
-              )}
-            </>
+                        run(
+                          { action: "remove-record", key: item.key },
+                          item.key,
+                        );
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                )}
+                {item.required && (
+                  <Button
+                    className="verify-action"
+                    disabled={waiting || item.verified}
+                    title={item.missing.join("; ")}
+                    onClick={() => verify(item)}
+                  >
+                    {waiting ? (
+                      <LoaderCircle size={14} className="spin" />
+                    ) : (
+                      <ShieldCheck size={14} />
+                    )}{" "}
+                    {item.verified ? "Verified" : "Verify"}
+                  </Button>
+                )}
+              </>
+            )}
+            {item.documentType && !item.recordId && model?.canVerify && (
+              <Button
+                onClick={() =>
+                  run(
+                    { action: "add-record", documentType: item.documentType },
+                    "add",
+                  )
+                }
+              >
+                <Plus size={14} />
+                Add missing document
+              </Button>
+            )}
+          </footer>
+          {errors[item.key] && (
+            <p role="alert" className="audit-error">
+              {errors[item.key]}
+            </p>
           )}
-          {item.documentType && !item.recordId && model?.canVerify && (
-            <Button
-              onClick={() =>
-                run(
-                  { action: "add-record", documentType: item.documentType },
-                  "add",
-                )
-              }
-            >
-              <Plus size={14} />
-              Add missing document
-            </Button>
-          )}
-        </footer>
-        {errors[item.key] && (
-          <p role="alert" className="audit-error">
-            {errors[item.key]}
-          </p>
-        )}
-      </section>
+        </td>
+      </tr>
+    );
+  }
+  function recordsTable(items: AuditItem[], title: string) {
+    return (
+      <div
+        className="validation-table-scroll"
+        role="region"
+        aria-label={title}
+        tabIndex={0}
+      >
+        <table className="validation-records-table">
+          <caption className="sr-only">{title}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Section / record</th>
+              <th scope="col">Details</th>
+              <th scope="col">Review & remarks</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>{items.map(card)}</tbody>
+        </table>
+      </div>
     );
   }
   if (loading)
@@ -904,17 +947,6 @@ export function PreAuditWorkspace({
                               : "Save as PDF"}
                           </Button>
                           <Button
-                            variant="ghost"
-                            disabled={busy.length > 0}
-                            onClick={() => {
-                              setLetterDraft(a.letter.content);
-                              setLetterEditing(true);
-                            }}
-                          >
-                            <Pencil size={14} />
-                            Edit
-                          </Button>
-                          <Button
                             variant="outline"
                             className="verify-action"
                             disabled={
@@ -1190,12 +1222,15 @@ export function PreAuditWorkspace({
                               )}
                             </div>
                           </header>
-                          {activeItems
-                            .filter((i) => (i.facilityId || "other") === id)
-                            .map(card)}
+                          {recordsTable(
+                            activeItems.filter(
+                              (i) => (i.facilityId || "other") === id,
+                            ),
+                            "Facility records",
+                          )}
                         </section>
                       ))
-                    : activeItems.map(card)}
+                    : recordsTable(activeItems, auditTabs[tab])}
                   {tab === 3 && model.canVerify && (
                     <Button
                       variant="outline"
@@ -1311,21 +1346,32 @@ export function PreAuditWorkspace({
               </li>
             ))}
           </ul>
-          {verifyItem?.key === "letter" && verifyItem.missing.some((reason) => reason.includes("[Auditor Company Address]")) && (
-            <label className="verification-address">
-              Auditor company address
-              <textarea
-                aria-label="Auditor company address"
-                value={verificationAddress}
-                onChange={(event) => setVerificationAddress(event.target.value)}
-                disabled={!model.canConfigure || busy.includes("verify-letter")}
-                maxLength={1000}
-                rows={3}
-                placeholder="Enter the actual registered address of the audit firm"
-              />
-              <small>{model.canConfigure ? "This address will be saved to audit settings and inserted into this letter." : "An administrator must save this address in Audit settings."}</small>
-            </label>
-          )}
+          {verifyItem?.key === "letter" &&
+            verifyItem.missing.some((reason) =>
+              reason.includes("[Auditor Company Address]"),
+            ) && (
+              <label className="verification-address">
+                Auditor company address
+                <textarea
+                  aria-label="Auditor company address"
+                  value={verificationAddress}
+                  onChange={(event) =>
+                    setVerificationAddress(event.target.value)
+                  }
+                  disabled={
+                    !model.canConfigure || busy.includes("verify-letter")
+                  }
+                  maxLength={1000}
+                  rows={3}
+                  placeholder="Enter the actual registered address of the audit firm"
+                />
+                <small>
+                  {model.canConfigure
+                    ? "This address will be saved to audit settings and inserted into this letter."
+                    : "An administrator must save this address in Audit settings."}
+                </small>
+              </label>
+            )}
           {errors["verify-letter"] && (
             <p role="alert" className="audit-error">
               {errors["verify-letter"]}
@@ -1342,18 +1388,6 @@ export function PreAuditWorkspace({
           </Button>
           {verifyItem?.key === "letter" ? (
             <>
-              <Button
-                variant="outline"
-                disabled={busy.includes("verify-letter")}
-                onClick={() => {
-                  verifyDialog.current?.close();
-                  if (!letterEditing)
-                    setLetterDraft(current.current!.audit.letter.content);
-                  setLetterEditing(true);
-                }}
-              >
-                Edit letter
-              </Button>
               {model.canConfigure && (
                 <Button
                   variant="outline"
@@ -1379,16 +1413,6 @@ export function PreAuditWorkspace({
                 Save & verify
               </Button>
             </>
-          ) : verifyItem && verifyItem.editableFields.length > 0 ? (
-            <Button
-              onClick={() => {
-                verifyDialog.current?.close();
-                edit(verifyItem);
-              }}
-            >
-              <Pencil size={15} />
-              Edit details
-            </Button>
           ) : null}
         </footer>
       </dialog>

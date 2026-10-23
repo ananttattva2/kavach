@@ -253,12 +253,41 @@ try {
   });
   await page
     .locator(".verify-checklist")
-    .getByRole("button", { name: "Edit letter", exact: true })
+    .getByRole("button", { name: "Close", exact: true })
     .click();
-  await page.getByLabel("Engagement letter content").waitFor();
+  assert.equal(
+    await page.getByRole("button", { name: "Edit", exact: true }).count(),
+    0,
+  );
+  for (const title of [
+    "Client Basic Info",
+    "Company Address",
+    "Company Documents",
+    "CTE & CTO/CCA",
+  ]) {
+    await page
+      .locator(".validation-tabs")
+      .getByRole("button", {
+        name: new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+      })
+      .click();
+    await page.locator(".validation-records-table").first().waitFor();
+    assert.equal(
+      await page.getByRole("button", { name: "Edit", exact: true }).count(),
+      0,
+    );
+    assert.equal(
+      await page.getByText("Replace file", { exact: true }).count(),
+      0,
+    );
+    await page.screenshot({
+      path: `artifacts/preaudit-table-${title.replace(/[^a-z]/gi, "").toLowerCase()}.png`,
+      fullPage: true,
+    });
+  }
   await page
-    .locator(".letter-editor")
-    .getByRole("button", { name: "Cancel", exact: true })
+    .locator(".validation-tabs")
+    .getByRole("button", { name: /Engagement Letter/ })
     .click();
   assert.equal(state.canVerify, true);
   assert.equal(
@@ -277,7 +306,10 @@ try {
     firmAddress: "",
   });
   // Reproduce a previously saved custom letter with the unresolved address.
-  await change({ action: "letter", content: state.audit.letter.content + "\nCustom agreed scope retained." });
+  await change({
+    action: "letter",
+    content: state.audit.letter.content + "\nCustom agreed scope retained.",
+  });
   await page.reload();
   await page
     .getByRole("heading", { name: "QA Audit & Compliance", exact: true })
@@ -286,9 +318,19 @@ try {
     .locator(".letter-panel")
     .getByRole("button", { name: "Verify", exact: true })
     .click();
-  await page.locator(".verify-checklist").getByRole("button", { name: "Save & verify", exact: true }).click();
-  await page.getByText("Enter the auditor company address before verifying.", { exact: true }).waitFor();
-  await page.locator(".verify-checklist").getByLabel("Auditor company address", { exact: true }).fill("18 Auditor Street, Mumbai, Maharashtra 400001");
+  await page
+    .locator(".verify-checklist")
+    .getByRole("button", { name: "Save & verify", exact: true })
+    .click();
+  await page
+    .getByText("Enter the auditor company address before verifying.", {
+      exact: true,
+    })
+    .waitFor();
+  await page
+    .locator(".verify-checklist")
+    .getByLabel("Auditor company address", { exact: true })
+    .fill("18 Auditor Street, Mumbai, Maharashtra 400001");
   await page
     .locator(".verify-checklist")
     .getByRole("button", { name: "Save & verify", exact: true })
@@ -300,15 +342,23 @@ try {
     .waitFor();
   state = await get();
   assert.equal(state.audit.letter.saved, true);
-  assert.ok(state.audit.letter.content.includes("Custom agreed scope retained."));
+  assert.ok(
+    state.audit.letter.content.includes("Custom agreed scope retained."),
+  );
   assert.ok(!state.audit.letter.content.includes("[Auditor Company Address]"));
-  assert.equal(state.audit.firm.address, "18 Auditor Street, Mumbai, Maharashtra 400001");
+  assert.equal(
+    state.audit.firm.address,
+    "18 Auditor Street, Mumbai, Maharashtra 400001",
+  );
   assert.equal(
     state.summary.items.find((i) => i.key === "letter").verified,
     true,
   );
   await page.reload();
-  await page.locator(".letter-panel").getByRole("button", { name: "Verified", exact: true }).waitFor();
+  await page
+    .locator(".letter-panel")
+    .getByRole("button", { name: "Verified", exact: true })
+    .waitFor();
   await change({
     action: "letter",
     content:

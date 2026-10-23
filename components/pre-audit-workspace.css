@@ -413,6 +413,113 @@
 .record-add select {
   max-width: 220px;
 }
+.validation-table-scroll {
+  overflow-x: auto;
+  border: 1px solid #dce7e1;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+.validation-records-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  text-align: left;
+}
+.validation-records-table th {
+  padding: 16px;
+  background: #edf5f0;
+  color: #426355;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.validation-records-table th:nth-child(1) {
+  width: 19%;
+}
+.validation-records-table th:nth-child(2) {
+  width: 35%;
+}
+.validation-records-table th:nth-child(3) {
+  width: 26%;
+}
+.validation-records-table th:nth-child(4) {
+  width: 20%;
+}
+.validation-records-table .validation-table-row {
+  border: 0;
+  border-bottom: 1px solid #e3ebe6;
+  border-radius: 0;
+  transition: background-color 180ms ease;
+}
+.validation-table-row:hover {
+  background: #f8fbf9;
+}
+.validation-table-row:last-child {
+  border-bottom: 0;
+}
+.validation-table-row > td {
+  padding: 20px 16px;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.record-identity .check-status {
+  display: inline-flex;
+  margin-top: 12px;
+}
+.record-identity > div > small {
+  display: block;
+  margin-top: 8px;
+  color: #788b82;
+  font-size: 10px;
+}
+.validation-table-row .validation-fields {
+  display: block;
+  padding: 0;
+}
+.validation-table-row .validation-fields > div {
+  display: grid;
+  grid-template-columns: minmax(100px, 40%) minmax(0, 1fr);
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #edf1ee;
+}
+.validation-table-row .validation-fields > div:first-child {
+  padding-top: 0;
+}
+.validation-table-row .validation-fields > div:last-child {
+  border-bottom: 0;
+}
+.validation-table-row .validation-fields dt {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.validation-table-row .record-review > * {
+  margin: 0 0 12px;
+}
+.record-review:empty::after {
+  content: "Ready for review";
+  color: #84958c;
+  font-size: 11px;
+}
+.validation-table-row .record-actions > footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.record-actions footer a {
+  color: #176344;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 0;
+}
+.validation-table-scroll:focus-visible {
+  outline: 2px solid #16845b;
+  outline-offset: 3px;
+}
 .validation-card {
   border: 1px solid #e1e5ed;
   border-radius: 12px;
