@@ -17,7 +17,6 @@ import {
   Save,
   Settings2,
   ShieldCheck,
-  Trash2,
   UserRound,
   X,
 } from "lucide-react";
@@ -111,10 +110,7 @@ export function PreAuditWorkspace({
   const [requiredDocs, setRequiredDocs] = useState<string[]>([]),
     [requiredConsents, setRequiredConsents] = useState<string[]>([]),
     [policyReason, setPolicyReason] = useState("");
-  const [newYear, setNewYear] = useState(""),
-    [newType, setNewType] = useState("GST Certificate"),
-    [newTable, setNewTable] = useState("cte"),
-    [facility, setFacility] = useState("");
+  const [newYear, setNewYear] = useState("");
   const dirty =
     letterEditing && letterDraft !== (model?.audit.letter.content || "");
   function install(next: Model) {
@@ -138,7 +134,6 @@ export function PreAuditWorkspace({
       setNotice("");
       setTab(0);
       setLetterEditing(false);
-      setFacility("");
       setEditItem(null);
       setRemarkItem(null);
       locks.current.clear();
@@ -520,27 +515,6 @@ export function PreAuditWorkspace({
                   <MessageSquare size={13} />
                   {item.remark?.text ? "Edit remark" : "Add remark"}
                 </Button>
-                {item.recordId && (
-                  <Button
-                    variant="ghost"
-                    className="record-delete"
-                    disabled={waiting}
-                    aria-label={"Delete " + item.title}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "Delete this record and its verification/remark?",
-                        )
-                      )
-                        run(
-                          { action: "remove-record", key: item.key },
-                          item.key,
-                        );
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </Button>
-                )}
                 {item.required && (
                   <Button
                     className="verify-action"
@@ -557,20 +531,6 @@ export function PreAuditWorkspace({
                   </Button>
                 )}
               </>
-            )}
-            {item.documentType && !item.recordId && model?.canVerify && (
-              <Button
-                className="record-add-missing"
-                onClick={() =>
-                  run(
-                    { action: "add-record", documentType: item.documentType },
-                    "add",
-                  )
-                }
-              >
-                <Plus size={14} />
-                Add missing document
-              </Button>
             )}
           </footer>
           {errors[item.key] && (
@@ -626,7 +586,6 @@ export function PreAuditWorkspace({
   const { audit: a, summary: s } = model;
   const letter = s.items.find((i) => i.key === "letter")!;
   const activeItems = s.items.filter((i) => i.tab === tab);
-  const facilities = a.facilities.map((f) => [f.id, f.name]);
   return (
     <Root className={"validation-page " + (embedded ? "embedded" : "")}>
       <div className="validation-breadcrumb">
@@ -1052,84 +1011,7 @@ export function PreAuditWorkspace({
                         checks verified
                       </p>
                     </div>
-                    {model.canVerify && tab === 3 && (
-                      <div className="record-add">
-                        <select
-                          aria-label="Document type to add"
-                          value={newType}
-                          onChange={(e) => setNewType(e.target.value)}
-                        >
-                          {documentChoices.map((type) => (
-                            <option key={type}>{type}</option>
-                          ))}
-                        </select>
-                        <Button
-                          variant="outline"
-                          disabled={busy.includes("add")}
-                          onClick={() =>
-                            run(
-                              { action: "add-record", documentType: newType },
-                              "add",
-                            )
-                          }
-                        >
-                          <Plus size={14} />
-                          Add document
-                        </Button>
-                      </div>
-                    )}
-                    {model.canVerify && tab === 4 && (
-                      <div className="record-add">
-                        <select
-                          aria-label="Record type to add"
-                          value={newTable}
-                          onChange={(e) => setNewTable(e.target.value)}
-                        >
-                          {Object.entries(tables)
-                            .filter(([key]) => key !== "msme")
-                            .map(([key, value]) => (
-                              <option key={key} value={key}>
-                                {value.title}
-                              </option>
-                            ))}
-                        </select>
-                        <select
-                          aria-label="Facility for new consent"
-                          value={facility}
-                          onChange={(e) => setFacility(e.target.value)}
-                        >
-                          <option value="">New independent facility</option>
-                          {facilities.map(([id, name]) => (
-                            <option key={id} value={id}>
-                              {name} · {id.slice(-6)}
-                            </option>
-                          ))}
-                        </select>
-                        <Button
-                          variant="outline"
-                          disabled={busy.includes("add")}
-                          onClick={() =>
-                            run(
-                              {
-                                action: "add-record",
-                                table: newTable,
-                                ...(facility ? { facilityId: facility } : {}),
-                              },
-                              "add",
-                            )
-                          }
-                        >
-                          <Plus size={14} />
-                          Add record
-                        </Button>
-                      </div>
-                    )}
                   </div>
-                  {errors.add && (
-                    <p role="alert" className="audit-error">
-                      {errors.add}
-                    </p>
-                  )}
                   {tab === 3 && letter.fileId && (
                     <section className="engagement-file">
                       <FileText size={20} />
@@ -1184,18 +1066,6 @@ export function PreAuditWorkspace({
                         </section>
                       ))
                     : recordsTable(activeItems, auditTabs[tab])}
-                  {tab === 3 && model.canVerify && (
-                    <Button
-                      variant="outline"
-                      disabled={busy.includes("add")}
-                      onClick={() =>
-                        run({ action: "add-record", table: "msme" }, "add")
-                      }
-                    >
-                      <Plus size={14} />
-                      Add MSME record
-                    </Button>
-                  )}
                 </>
               )}
             </motion.div>
