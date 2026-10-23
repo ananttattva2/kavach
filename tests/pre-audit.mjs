@@ -126,7 +126,25 @@ try {
   ]);
   const page = await context.newPage();
   qaPage = page;
-  page.on("pageerror", (e) => errors.push(e.message));
+  const extensionErrors = [];
+  page.on("pageerror", (e) => {
+    if (e.stack?.includes("chrome-extension://qa-share-modal/"))
+      extensionErrors.push(e.message);
+    else errors.push(e.message);
+  });
+  // Reproduce an unrelated extension's null-listener crash without suppressing application errors.
+  await page.addInitScript(() => {
+    window.addEventListener(
+      "DOMContentLoaded",
+      () => {
+        const script = document.createElement("script");
+        script.textContent =
+          "setTimeout(()=>document.querySelector('.qa-extension-missing-button').addEventListener('click',()=>{}),50);\n//# sourceURL=chrome-extension://qa-share-modal/js/share-modal.js";
+        document.head.appendChild(script);
+      },
+      { once: true },
+    );
+  });
   const basic = {
     "Client legal name": "Audit QA Industries Private Limited",
     "Trade name": "Audit QA",
@@ -198,6 +216,18 @@ try {
   // Pending verification is clickable and explains blockers rather than silently disabling the action.
   await page.goto(
     base + "/clients/" + clientId + "/pre-audit?auditId=" + firstId,
+  );
+  await page
+    .locator(".portal-topbar")
+    .getByText("Pre-audit check", { exact: true })
+    .waitFor();
+  const sidebarBounds = await page.locator(".portal-sidebar").boundingBox();
+  assert.ok(sidebarBounds.x >= 0 && sidebarBounds.width > 200);
+  assert.equal(
+    await page
+      .locator(".audit-history .selected")
+      .evaluate((el) => getComputedStyle(el).backgroundColor),
+    "rgb(23, 99, 68)",
   );
   const verifyButton = page
     .locator(".letter-panel")
@@ -648,6 +678,21 @@ try {
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
+  );
+  await page
+    .getByRole("button", { name: "Open navigation", exact: true })
+    .click();
+  await page.locator(".portal-sidebar.mobile-open").waitFor();
+  await page.keyboard.press("Escape");
+  await page
+    .locator(".portal-sidebar.mobile-open")
+    .waitFor({ state: "hidden" });
+  await page.setViewportSize({ width: 1750, height: 1080 });
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await page.getByRole("heading", { name: "Compliance portfolio" }).waitFor();
+  assert.ok(
+    extensionErrors.length > 0,
+    "An external extension error was observed without preventing verification",
   );
   assert.deepEqual(errors, []);
   console.log(

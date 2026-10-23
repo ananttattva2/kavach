@@ -1,0 +1,46 @@
+.audit-workspace-shell .portal-content {
+  max-width: none;
+  padding: 18px 20px 0;
+}
+.audit-workspace-shell .validation-page.embedded {
+  padding: 0;
+  min-height: calc(100svh - 100px);
+  background: transparent;
+}
+.audit-workspace-shell .portal-nav > button.active,
+.audit-workspace-shell .nav-children > button.active {
+  color: #176344;
+  background: #eaf5ee;
+  border-color: #d4e7d9;
+}
+.audit-workspace-shell .portal-nav > button.active:before {
+  background: #176344;
+}
+.audit-workspace-shell .portal-nav-count {
+  color: #176344;
+  background: #e7f3eb;
+}
+.audit-workspace-shell .portal-avatar {
+  color: #176344;
+  background: #eaf5ed;
+  border-color: #d4e7dc;
+}
+.audit-workspace-shell .sidebar-section-label {
+  color: #7c9183;
+}
+.audit-workspace-shell .portal-topbar {
+  z-index: 35;
+}
+.audit-workspace-shell .portal-footer {
+  margin-top: 20px;
+}
+@media (max-width: 780px) {
+  .audit-workspace-shell .portal-content {
+    padding: 14px 12px 0;
+  }
+}
+@media (max-width: 480px) {
+  .audit-workspace-shell .portal-content {
+    padding: 10px 8px 0;
+  }
+}

@@ -1,3 +1,4 @@
+import { authOrigins } from '@/lib/auth-origins';
 import { licenseAccess } from '@/lib/license';
 import { getAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
@@ -29,7 +30,7 @@ export async function GET(request:Request){
 }
 export async function PATCH(request:Request){
  try{
-  if(request.headers.get('origin')!==new URL(request.url).origin)return Response.json({error:'Invalid origin'},{status:403});
+  if(!authOrigins(process.env.BETTER_AUTH_URL).includes(request.headers.get('origin')||''))return Response.json({error:'Invalid origin'},{status:403});
   const session=await getAuth().api.getSession({headers:request.headers});
   if(!session)return Response.json({error:'Unauthorized'},{status:401});const licenseFailure=await licenseAccess(session);if(licenseFailure)return licenseFailure;
   const parsed=z.object({ids:z.array(z.string().min(1).max(150)).min(1).max(100)}).safeParse(await request.json());

@@ -64,11 +64,14 @@ export function PreAuditWorkspace({
   client,
   onComplete,
   embedded = false,
+  onDirtyChange,
 }: {
   client: ClientData;
   onComplete?: (audit: AuditData) => void;
   embedded?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
+  const Root = embedded ? "div" : "main";
   const reducedMotion = useReducedMotion();
   const verifyDialog = useRef<HTMLDialogElement>(null);
   const [verifyItem, setVerifyItem] = useState<AuditItem | null>(null);
@@ -349,6 +352,14 @@ export function PreAuditWorkspace({
       />
     );
   }
+  useEffect(() => {
+    onDirtyChange?.(dirty || busy.length > 0);
+    return () => onDirtyChange?.(false);
+  }, [dirty, busy.length, onDirtyChange]);
+  useEffect(() => {
+    const modal = verifyDialog.current;
+    if (verifyItem && modal?.isConnected && !modal.open) modal.showModal();
+  }, [verifyItem]);
   async function verify(item: AuditItem) {
     const reasons =
       item.key === "letter" && dirty
@@ -356,7 +367,6 @@ export function PreAuditWorkspace({
         : item.missing;
     if (reasons.length) {
       setVerifyItem({ ...item, missing: reasons });
-      verifyDialog.current?.showModal();
       return;
     }
     await run(
@@ -573,14 +583,14 @@ export function PreAuditWorkspace({
   }
   if (loading)
     return (
-      <main className="validation-loading">
+      <Root className="validation-loading">
         <LoaderCircle size={28} className="spin" />
         <h2>Loading audit workspace…</h2>
-      </main>
+      </Root>
     );
   if (loadError || !model)
     return (
-      <main className="validation-loading">
+      <Root className="validation-loading">
         <h2>Could not load this audit</h2>
         <p role="alert">{loadError || "Audit data is unavailable."}</p>
         <Button onClick={() => load()}>
@@ -588,14 +598,14 @@ export function PreAuditWorkspace({
           Retry
         </Button>
         <a href="/dashboard?view=clients">Back to clients</a>
-      </main>
+      </Root>
     );
   const { audit: a, summary: s } = model;
   const letter = s.items.find((i) => i.key === "letter")!;
   const activeItems = s.items.filter((i) => i.tab === tab);
   const facilities = a.facilities.map((f) => [f.id, f.name]);
   return (
-    <main className={"validation-page " + (embedded ? "embedded" : "")}>
+    <Root className={"validation-page " + (embedded ? "embedded" : "")}>
       <div className="validation-breadcrumb">
         <a
           href="/dashboard?view=clients"
@@ -1239,6 +1249,7 @@ export function PreAuditWorkspace({
       )}
       <dialog
         ref={verifyDialog}
+        onClose={() => setVerifyItem(null)}
         className="audit-modal verify-checklist"
         data-lenis-prevent
         aria-labelledby="verify-checklist-title"
@@ -1748,6 +1759,6 @@ export function PreAuditWorkspace({
           </footer>
         </form>
       </dialog>
-    </main>
+    </Root>
   );
 }
