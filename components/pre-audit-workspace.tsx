@@ -18,7 +18,6 @@ import {
   Settings2,
   ShieldCheck,
   Trash2,
-  Upload,
   UserRound,
   X,
 } from "lucide-react";
@@ -245,37 +244,6 @@ export function PreAuditWorkspace({
         }
       }
       return null;
-    } finally {
-      if (epoch === generation.current) {
-        locks.current.delete(key);
-        setBusy([...locks.current]);
-      }
-    }
-  }
-  async function upload(item: AuditItem, file: File | undefined) {
-    if (!file || !current.current) return;
-    const key = item.key,
-      epoch = generation.current;
-    if (locks.current.has(key)) return;
-    locks.current.add(key);
-    setBusy([...locks.current]);
-    setErrors((e) => ({ ...e, [key]: "" }));
-    try {
-      const form = new FormData();
-      form.set("file", file);
-      const result = await request("/api/files", {
-        method: "POST",
-        body: form,
-      });
-      if (epoch !== generation.current) return;
-      locks.current.delete(key);
-      await run(
-        { action: "replace-file", key: item.key, fileId: result.id },
-        key,
-      );
-    } catch (error) {
-      if (epoch === generation.current)
-        setErrors((e) => ({ ...e, [key]: (error as Error).message }));
     } finally {
       if (epoch === generation.current) {
         locks.current.delete(key);
@@ -550,24 +518,6 @@ export function PreAuditWorkspace({
                   <MessageSquare size={13} />
                   {item.remark?.text ? "Edit remark" : "Add remark"}
                 </Button>
-                {!item.fileId &&
-                  ((item.documentType && item.recordId) ||
-                    (item.table &&
-                      ["cte", "cto", "msme"].includes(item.table))) && (
-                    <label className="audit-upload">
-                      <Upload size={13} />
-                      {waiting ? "Saving…" : "Upload file"}
-                      <input
-                        type="file"
-                        accept=".pdf,.png,.jpg,.jpeg"
-                        disabled={waiting}
-                        onChange={(e) => {
-                          upload(item, e.target.files?.[0]);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                  )}
                 {item.recordId && (
                   <Button
                     variant="ghost"
