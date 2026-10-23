@@ -1257,6 +1257,9 @@ export function PreAuditWorkspace({
                     id: clientId,
                     stream: a.snapshot.wasteStream,
                     category: a.snapshot.registrationCategory,
+                    step: "documents",
+                    documentId: verifyItem.recordId,
+                    auditId: a.id,
                   }).toString()
                 }
                 onClick={(event) => {

@@ -410,6 +410,60 @@ try {
   assert.equal(uploaded.status(), 200);
   const uploadId = (await uploaded.json()).id;
   await change({ action: "import-document", key: pan.key }, 422);
+  await page.reload();
+  await page
+    .locator(".validation-tabs")
+    .getByRole("button", { name: /Company Documents/ })
+    .click();
+  await page
+    .locator('[id="audit-item-' + pan.key + '"]')
+    .getByRole("button", { name: "Verify", exact: true })
+    .click();
+  const recoveryHref = await page
+    .locator(".verify-checklist")
+    .getByRole("link", { name: "Client documents", exact: true })
+    .getAttribute("href");
+  assert.equal(
+    new URL(recoveryHref, base).searchParams.get("step"),
+    "documents",
+  );
+  assert.equal(
+    new URL(recoveryHref, base).searchParams.get("documentId"),
+    pan.recordId,
+  );
+  const recoveryPage = await context.newPage();
+  await recoveryPage.goto(base + recoveryHref);
+  await recoveryPage
+    .getByRole("heading", { name: "Company documents", exact: true })
+    .waitFor();
+  const targetDocument = recoveryPage.locator(
+    '[data-document-id="' + pan.recordId + '"]',
+  );
+  await targetDocument.locator(".missing-document-file").waitFor();
+  assert.ok(
+    (await targetDocument.getAttribute("class")).includes(
+      "document-needs-attention",
+    ),
+  );
+  await recoveryPage.waitForFunction(
+    (id) => document.activeElement?.getAttribute("data-document-id") === id,
+    pan.recordId,
+  );
+  await recoveryPage
+    .getByLabel("PAN Card number", { exact: true })
+    .fill("QA-PAN-123");
+  assert.equal(
+    await recoveryPage
+      .getByLabel("PAN Card number", { exact: true })
+      .getAttribute("aria-invalid"),
+    null,
+  );
+  await recoveryPage.screenshot({
+    path: "artifacts/preaudit-document-recovery.png",
+    fullPage: true,
+  });
+  await recoveryPage.close();
+
   // A saved onboarding attachment can be imported by stable ID without syncing other records.
   await db.collection("clients").updateOne(
     { _id: new ObjectId(clientId) },

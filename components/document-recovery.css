@@ -1,0 +1,56 @@
+.document-row.document-needs-attention {
+  background: #fff5f5;
+  box-shadow: inset 3px 0 #ce4141;
+}
+.document-row.document-target {
+  outline: 2px solid #ce4141;
+  outline-offset: -2px;
+  scroll-margin: 100px;
+}
+.document-row.document-target:not(.document-needs-attention) {
+  outline-color: #16845b;
+}
+.document-row [aria-invalid="true"],
+.document-row .missing-document-file {
+  border-color: #ce4141;
+  background: #fffafa;
+}
+.document-row .document-pending-reasons {
+  display: block;
+  color: #b12c2c;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.6;
+  margin-top: 8px;
+}
+.document-needs-attention > strong {
+  flex-wrap: wrap;
+}
+.document-row .document-pending-reasons {
+  flex-basis: 100%;
+}
+.document-recovery-summary {
+  border: 1px solid #f0c7c7;
+  background: #fff5f5;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  color: #a12f2f;
+  font-size: 12px;
+}
+.document-recovery-summary p {
+  margin: 6px 0 0;
+}
+.document-recovery-summary ul {
+  padding-left: 18px;
+  margin-bottom: 0;
+}
+.document-recovery-summary button {
+  color: inherit;
+  text-decoration: underline;
+  background: transparent;
+  border: 0;
+  padding: 3px 0;
+  text-align: left;
+  cursor: pointer;
+}
