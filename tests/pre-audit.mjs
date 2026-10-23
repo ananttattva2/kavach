@@ -274,9 +274,10 @@ try {
     action: "assign",
     auditorId: admin.toString(),
     firmName: "QA Audit & Compliance",
-    firmAddress: "18 Auditor Street, Mumbai, Maharashtra 400001",
+    firmAddress: "",
   });
-  // Save & verify performs both real server operations once the mandatory data is present.
+  // Reproduce a previously saved custom letter with the unresolved address.
+  await change({ action: "letter", content: state.audit.letter.content + "\nCustom agreed scope retained." });
   await page.reload();
   await page
     .getByRole("heading", { name: "QA Audit & Compliance", exact: true })
@@ -285,6 +286,9 @@ try {
     .locator(".letter-panel")
     .getByRole("button", { name: "Verify", exact: true })
     .click();
+  await page.locator(".verify-checklist").getByRole("button", { name: "Save & verify", exact: true }).click();
+  await page.getByText("Enter the auditor company address before verifying.", { exact: true }).waitFor();
+  await page.locator(".verify-checklist").getByLabel("Auditor company address", { exact: true }).fill("18 Auditor Street, Mumbai, Maharashtra 400001");
   await page
     .locator(".verify-checklist")
     .getByRole("button", { name: "Save & verify", exact: true })
@@ -296,10 +300,15 @@ try {
     .waitFor();
   state = await get();
   assert.equal(state.audit.letter.saved, true);
+  assert.ok(state.audit.letter.content.includes("Custom agreed scope retained."));
+  assert.ok(!state.audit.letter.content.includes("[Auditor Company Address]"));
+  assert.equal(state.audit.firm.address, "18 Auditor Street, Mumbai, Maharashtra 400001");
   assert.equal(
     state.summary.items.find((i) => i.key === "letter").verified,
     true,
   );
+  await page.reload();
+  await page.locator(".letter-panel").getByRole("button", { name: "Verified", exact: true }).waitFor();
   await change({
     action: "letter",
     content:

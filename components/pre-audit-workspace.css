@@ -1122,6 +1122,21 @@
 .verify-checklist-body {
   padding: 22px 24px;
 }
+.verification-address {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  color: #284b40;
+  font-weight: 600;
+}
+.verification-address textarea {
+  width: 100%;
+  resize: vertical;
+}
+.verification-address small {
+  color: #647b72;
+  font-weight: 400;
+}
 .verify-checklist-body > strong {
   font-size: 15px;
   color: #29435a;

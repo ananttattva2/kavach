@@ -75,6 +75,8 @@ export function PreAuditWorkspace({
   const reducedMotion = useReducedMotion();
   const verifyDialog = useRef<HTMLDialogElement>(null);
   const [verifyItem, setVerifyItem] = useState<AuditItem | null>(null);
+  const [verificationAddress, setVerificationAddress] = useState("");
+  const savingVerification = useRef(false);
   const initialYear = client.basic["Financial year"];
   const clientId = client.id!;
   const endpoint = "/api/clients/" + clientId + "/audits";
@@ -366,6 +368,7 @@ export function PreAuditWorkspace({
         ? ["Save the unsaved letter edits before verification", ...item.missing]
         : item.missing;
     if (reasons.length) {
+      setVerificationAddress(current.current?.audit.firm.address || "");
       setVerifyItem({ ...item, missing: reasons });
       return;
     }
@@ -375,28 +378,52 @@ export function PreAuditWorkspace({
     );
   }
   async function saveAndVerifyLetter() {
-    const record = current.current;
-    if (!record) return;
-    const saved = await run(
-      {
-        action: "letter",
-        content: dirty ? letterDraft : record.audit.letter.content,
-      },
-      "verify-letter",
-    );
-    if (!saved) return;
-    setLetterDraft(saved.audit.letter.content);
-    setLetterEditing(false);
-    const item = saved.summary.items.find((i) => i.key === "letter")!;
-    if (item.missing.length) {
-      setVerifyItem(item);
-      return;
+    let record = current.current;
+    if (!record || savingVerification.current) return;
+    savingVerification.current = true;
+    try {
+      let content = dirty ? letterDraft : record.audit.letter.content;
+      if (content.includes("[Auditor Company Address]")) {
+        const address = verificationAddress.trim();
+        if (!address) {
+          setErrors((previous) => ({ ...previous, "verify-letter": "Enter the auditor company address before verifying." }));
+          return;
+        }
+        if (address !== record.audit.firm.address && record.canConfigure) {
+          const configured = await run({ action: "assign", auditorId: record.audit.auditor.id, firmName: record.audit.firm.name, firmAddress: address }, "verify-letter");
+          if (!configured) return;
+          record = configured;
+        }
+        if (address !== record.audit.firm.address) {
+          setErrors((previous) => ({ ...previous, "verify-letter": "Ask an administrator to save the auditor company address in Audit settings." }));
+          return;
+        }
+        content = content.replaceAll("[Auditor Company Address]", () => address);
+      }
+      const saved = await run(
+        {
+          action: "letter",
+          content,
+        },
+        "verify-letter",
+      );
+      if (!saved) return;
+      setLetterDraft(saved.audit.letter.content);
+      setLetterEditing(false);
+      const item = saved.summary.items.find((i) => i.key === "letter")!;
+      if (item.missing.length) {
+        setVerifyItem(item);
+        setErrors((previous) => ({ ...previous, "verify-letter": "Verification is still pending. Resolve the requirements listed above." }));
+        return;
+      }
+      const verified = await run(
+        { action: "verify", key: "letter", fingerprint: item.fingerprint },
+        "verify-letter",
+      );
+      if (verified) verifyDialog.current?.close();
+    } finally {
+      savingVerification.current = false;
     }
-    const verified = await run(
-      { action: "verify", key: "letter", fingerprint: item.fingerprint },
-      "verify-letter",
-    );
-    if (verified) verifyDialog.current?.close();
   }
   function card(item: AuditItem) {
     const waiting = busy.includes(item.key);
@@ -1284,6 +1311,21 @@ export function PreAuditWorkspace({
               </li>
             ))}
           </ul>
+          {verifyItem?.key === "letter" && verifyItem.missing.some((reason) => reason.includes("[Auditor Company Address]")) && (
+            <label className="verification-address">
+              Auditor company address
+              <textarea
+                aria-label="Auditor company address"
+                value={verificationAddress}
+                onChange={(event) => setVerificationAddress(event.target.value)}
+                disabled={!model.canConfigure || busy.includes("verify-letter")}
+                maxLength={1000}
+                rows={3}
+                placeholder="Enter the actual registered address of the audit firm"
+              />
+              <small>{model.canConfigure ? "This address will be saved to audit settings and inserted into this letter." : "An administrator must save this address in Audit settings."}</small>
+            </label>
+          )}
           {errors["verify-letter"] && (
             <p role="alert" className="audit-error">
               {errors["verify-letter"]}
