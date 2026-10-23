@@ -23,6 +23,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "./ui/button";
 import {
   auditTabs,
@@ -68,6 +69,9 @@ export function PreAuditWorkspace({
   onComplete?: (audit: AuditData) => void;
   embedded?: boolean;
 }) {
+  const reducedMotion = useReducedMotion();
+  const verifyDialog = useRef<HTMLDialogElement>(null);
+  const [verifyItem, setVerifyItem] = useState<AuditItem | null>(null);
   const initialYear = client.basic["Financial year"];
   const clientId = client.id!;
   const endpoint = "/api/clients/" + clientId + "/audits";
@@ -345,10 +349,53 @@ export function PreAuditWorkspace({
       />
     );
   }
+  async function verify(item: AuditItem) {
+    const reasons =
+      item.key === "letter" && dirty
+        ? ["Save the unsaved letter edits before verification", ...item.missing]
+        : item.missing;
+    if (reasons.length) {
+      setVerifyItem({ ...item, missing: reasons });
+      verifyDialog.current?.showModal();
+      return;
+    }
+    await run(
+      { action: "verify", key: item.key, fingerprint: item.fingerprint },
+      item.key,
+    );
+  }
+  async function saveAndVerifyLetter() {
+    const record = current.current;
+    if (!record) return;
+    const saved = await run(
+      {
+        action: "letter",
+        content: dirty ? letterDraft : record.audit.letter.content,
+      },
+      "verify-letter",
+    );
+    if (!saved) return;
+    setLetterDraft(saved.audit.letter.content);
+    setLetterEditing(false);
+    const item = saved.summary.items.find((i) => i.key === "letter")!;
+    if (item.missing.length) {
+      setVerifyItem(item);
+      return;
+    }
+    const verified = await run(
+      { action: "verify", key: "letter", fingerprint: item.fingerprint },
+      "verify-letter",
+    );
+    if (verified) verifyDialog.current?.close();
+  }
   function card(item: AuditItem) {
     const waiting = busy.includes(item.key);
     return (
-      <section className="validation-card" key={item.key}>
+      <section
+        className="validation-card"
+        id={"audit-item-" + item.key}
+        key={item.key}
+      >
         <header>
           <div>
             <h3>
@@ -487,18 +534,10 @@ export function PreAuditWorkspace({
               )}
               {item.required && (
                 <Button
-                  disabled={waiting || item.verified || item.missing.length > 0}
+                  className="verify-action"
+                  disabled={waiting || item.verified}
                   title={item.missing.join("; ")}
-                  onClick={() =>
-                    run(
-                      {
-                        action: "verify",
-                        key: item.key,
-                        fingerprint: item.fingerprint,
-                      },
-                      item.key,
-                    )
-                  }
+                  onClick={() => verify(item)}
                 >
                   {waiting ? (
                     <LoaderCircle size={14} className="spin" />
@@ -778,348 +817,364 @@ export function PreAuditWorkspace({
               </button>
             ))}
           </nav>
-          {tab === 0 ? (
-            <section className="letter-panel">
-              <header>
-                <h2>
-                  <FileText size={16} />
-                  Engagement Letter
-                </h2>
-                <div>
-                  {model.canVerify && (
-                    <>
-                      <Button
-                        variant="outline"
-                        disabled={
-                          dirty ||
-                          busy.includes("letter") ||
-                          busy.includes("letter-pdf") ||
-                          !a.letter.saved
-                        }
-                        title={
-                          !a.letter.saved
-                            ? "Save the letter first"
-                            : dirty
-                              ? "Save or cancel edits first"
-                              : ""
-                        }
-                        onClick={() =>
-                          run({ action: "pdf", kind: "letter" }, "letter-pdf")
-                        }
-                      >
-                        <Download size={14} />
-                        {busy.includes("letter-pdf")
-                          ? "Generating…"
-                          : "Save as PDF"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        disabled={busy.length > 0}
-                        onClick={() => {
-                          setLetterDraft(a.letter.content);
-                          setLetterEditing(true);
-                        }}
-                      >
-                        <Pencil size={14} />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        disabled={
-                          dirty ||
-                          letter.missing.length > 0 ||
-                          letter.verified ||
-                          busy.includes("letter")
-                        }
-                        title={letter.missing.join("; ")}
-                        onClick={() =>
-                          run(
-                            {
-                              action: "verify",
-                              key: "letter",
-                              fingerprint: letter.fingerprint,
-                            },
-                            "letter",
-                          )
-                        }
-                      >
-                        <Check size={14} />
-                        {letter.verified ? "Verified" : "Verify"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        aria-label="Engagement letter remark"
-                        onClick={() => remark(letter)}
-                      >
-                        <MessageSquare size={15} />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </header>
-              {letterEditing ? (
-                <div className="letter-editor">
-                  <label htmlFor="engagement-content">
-                    Engagement letter content
-                  </label>
-                  <textarea
-                    id="engagement-content"
-                    value={letterDraft}
-                    onChange={(e) => setLetterDraft(e.target.value)}
-                    maxLength={100000}
-                  />
-                  <div>
-                    <Button
-                      variant="outline"
-                      disabled={busy.includes("letter")}
-                      onClick={() => {
-                        setLetterDraft(a.letter.content);
-                        setLetterEditing(false);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      disabled={!letterDraft.trim() || busy.includes("letter")}
-                      onClick={async () => {
-                        const next = await run(
-                          { action: "letter", content: letterDraft },
-                          "letter",
-                        );
-                        if (next) {
-                          setLetterDraft(next.audit.letter.content);
-                          setLetterEditing(false);
-                        }
-                      }}
-                    >
-                      <Save size={15} />
-                      {busy.includes("letter") ? "Saving…" : "Save letter"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setLetterDraft(model.suggestedLetter)}
-                    >
-                      Use current default
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        const win = window.open("", "_blank");
-                        if (win) {
-                          win.document.title =
-                            "Unsaved engagement letter preview";
-                          const pre = win.document.createElement("pre");
-                          pre.style.cssText =
-                            "white-space:pre-wrap;font:16px/1.8 Georgia;max-width:800px;margin:40px auto;padding:24px";
-                          pre.textContent = letterDraft;
-                          win.document.body.appendChild(pre);
-                        }
-                      }}
-                    >
-                      Preview draft
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <article className="audit-letter-paper">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={a.id + "-" + tab}
+              className="audit-tab-content"
+              initial={{ opacity: 0, y: reducedMotion ? 0 : 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: reducedMotion ? 0 : -6 }}
+              transition={{
+                duration: reducedMotion ? 0 : 0.2,
+                ease: "easeOut",
+              }}
+            >
+              {tab === 0 ? (
+                <section className="letter-panel" id="audit-item-letter">
                   <header>
-                    <h2>{a.letter.content.split("\n")[0]}</h2>
+                    <h2>
+                      <FileText size={16} />
+                      Engagement Letter
+                    </h2>
+                    <div>
+                      {model.canVerify && (
+                        <>
+                          <Button
+                            variant="outline"
+                            disabled={
+                              dirty ||
+                              busy.includes("letter") ||
+                              busy.includes("letter-pdf") ||
+                              !a.letter.saved
+                            }
+                            title={
+                              !a.letter.saved
+                                ? "Save the letter first"
+                                : dirty
+                                  ? "Save or cancel edits first"
+                                  : ""
+                            }
+                            onClick={() =>
+                              run(
+                                { action: "pdf", kind: "letter" },
+                                "letter-pdf",
+                              )
+                            }
+                          >
+                            <Download size={14} />
+                            {busy.includes("letter-pdf")
+                              ? "Generating…"
+                              : "Save as PDF"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            disabled={busy.length > 0}
+                            onClick={() => {
+                              setLetterDraft(a.letter.content);
+                              setLetterEditing(true);
+                            }}
+                          >
+                            <Pencil size={14} />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="verify-action"
+                            disabled={
+                              letter.verified ||
+                              busy.includes("letter") ||
+                              busy.includes("verify-letter")
+                            }
+                            title={letter.missing.join("; ")}
+                            onClick={() => verify(letter)}
+                          >
+                            <Check size={14} />
+                            {letter.verified ? "Verified" : "Verify"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            aria-label="Engagement letter remark"
+                            onClick={() => remark(letter)}
+                          >
+                            <MessageSquare size={15} />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </header>
-                  <pre>{a.letter.content.split("\n").slice(1).join("\n")}</pre>
-                </article>
-              )}
-              <div className="letter-validation">
-                {letter.missing.length > 0 && (
-                  <div className="item-blockers">
-                    <strong>Before verification</strong>
-                    <ul>
-                      {letter.missing.map((m) => (
-                        <li key={m}>{m}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {letter.stale && (
-                  <p className="stale-note">
-                    Saved content changed. Re-verification is required.
-                  </p>
-                )}
-                {letter.verified && letter.check && (
-                  <p className="verification-meta">
-                    <CheckCircle2 size={15} />
-                    Verified by {letter.check.verifiedBy.name} ·{" "}
-                    {dateTime(letter.check.verifiedAt)}
-                  </p>
-                )}
-                {letter.remark?.text && (
-                  <blockquote>
-                    {letter.remark.text}
-                    <small>
-                      {letter.remark.by} · {dateTime(letter.remark.at)}
-                    </small>
-                  </blockquote>
-                )}
-                {errors.letter && (
-                  <p role="alert" className="audit-error">
-                    {errors.letter}
-                  </p>
-                )}
-                {errors["letter-pdf"] && (
-                  <p role="alert" className="audit-error">
-                    {errors["letter-pdf"]}
-                  </p>
-                )}
-              </div>
-            </section>
-          ) : (
-            <>
-              <div className="validation-section-heading">
-                <div>
-                  <h2>{auditTabs[tab]}</h2>
-                  <p>
-                    {s.tabs[tab].verified}/{s.tabs[tab].required} applicable
-                    checks verified
-                  </p>
-                </div>
-                {model.canVerify && tab === 3 && (
-                  <div className="record-add">
-                    <select
-                      aria-label="Document type to add"
-                      value={newType}
-                      onChange={(e) => setNewType(e.target.value)}
-                    >
-                      {documentChoices.map((type) => (
-                        <option key={type}>{type}</option>
-                      ))}
-                    </select>
-                    <Button
-                      variant="outline"
-                      disabled={busy.includes("add")}
-                      onClick={() =>
-                        run(
-                          { action: "add-record", documentType: newType },
-                          "add",
-                        )
-                      }
-                    >
-                      <Plus size={14} />
-                      Add document
-                    </Button>
-                  </div>
-                )}
-                {model.canVerify && tab === 4 && (
-                  <div className="record-add">
-                    <select
-                      aria-label="Record type to add"
-                      value={newTable}
-                      onChange={(e) => setNewTable(e.target.value)}
-                    >
-                      {Object.entries(tables)
-                        .filter(([key]) => key !== "msme")
-                        .map(([key, value]) => (
-                          <option key={key} value={key}>
-                            {value.title}
-                          </option>
-                        ))}
-                    </select>
-                    <select
-                      aria-label="Facility for new consent"
-                      value={facility}
-                      onChange={(e) => setFacility(e.target.value)}
-                    >
-                      <option value="">New independent facility</option>
-                      {facilities.map(([id, name]) => (
-                        <option key={id} value={id}>
-                          {name} · {id.slice(-6)}
-                        </option>
-                      ))}
-                    </select>
-                    <Button
-                      variant="outline"
-                      disabled={busy.includes("add")}
-                      onClick={() =>
-                        run(
-                          {
-                            action: "add-record",
-                            table: newTable,
-                            ...(facility ? { facilityId: facility } : {}),
-                          },
-                          "add",
-                        )
-                      }
-                    >
-                      <Plus size={14} />
-                      Add record
-                    </Button>
-                  </div>
-                )}
-              </div>
-              {errors.add && (
-                <p role="alert" className="audit-error">
-                  {errors.add}
-                </p>
-              )}
-              {tab === 3 && letter.fileId && (
-                <section className="engagement-file">
-                  <FileText size={20} />
-                  <div>
-                    <strong>Engagement Letter PDF</strong>
-                    <small>
-                      {letter.verified
-                        ? "Verified with Tab 1"
-                        : "Tab 1 verification pending"}
-                    </small>
-                  </div>
-                  <a
-                    href={"/api/files?id=" + letter.fileId + "&preview=1"}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Preview
-                  </a>
-                  <a href={"/api/files?id=" + letter.fileId}>Download</a>
-                  <Button variant="ghost" onClick={() => setTab(0)}>
-                    Open letter
-                  </Button>
-                </section>
-              )}
-              {tab === 4
-                ? [
-                    ...new Set(activeItems.map((i) => i.facilityId || "other")),
-                  ].map((id) => (
-                    <section className="facility-group" key={id}>
+                  {letterEditing ? (
+                    <div className="letter-editor">
+                      <label htmlFor="engagement-content">
+                        Engagement letter content
+                      </label>
+                      <textarea
+                        id="engagement-content"
+                        value={letterDraft}
+                        onChange={(e) => setLetterDraft(e.target.value)}
+                        maxLength={100000}
+                      />
+                      <div>
+                        <Button
+                          variant="outline"
+                          disabled={busy.includes("letter")}
+                          onClick={() => {
+                            setLetterDraft(a.letter.content);
+                            setLetterEditing(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          disabled={
+                            !letterDraft.trim() || busy.includes("letter")
+                          }
+                          onClick={async () => {
+                            const next = await run(
+                              { action: "letter", content: letterDraft },
+                              "letter",
+                            );
+                            if (next) {
+                              setLetterDraft(next.audit.letter.content);
+                              setLetterEditing(false);
+                            }
+                          }}
+                        >
+                          <Save size={15} />
+                          {busy.includes("letter") ? "Saving…" : "Save letter"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setLetterDraft(model.suggestedLetter)}
+                        >
+                          Use current default
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            const win = window.open("", "_blank");
+                            if (win) {
+                              win.document.title =
+                                "Unsaved engagement letter preview";
+                              const pre = win.document.createElement("pre");
+                              pre.style.cssText =
+                                "white-space:pre-wrap;font:16px/1.8 Georgia;max-width:800px;margin:40px auto;padding:24px";
+                              pre.textContent = letterDraft;
+                              win.document.body.appendChild(pre);
+                            }
+                          }}
+                        >
+                          Preview draft
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <article className="audit-letter-paper">
                       <header>
-                        <Building2 size={17} />
-                        <div>
-                          <strong>
-                            {id === "other"
-                              ? "Production & other records"
-                              : a.facilities.find((f) => f.id === id)?.name ||
-                                "Facility"}
-                          </strong>
-                          {id !== "other" && <small>Facility ID: {id}</small>}
-                        </div>
+                        <h2>{a.letter.content.split("\n")[0]}</h2>
                       </header>
-                      {activeItems
-                        .filter((i) => (i.facilityId || "other") === id)
-                        .map(card)}
+                      <pre>
+                        {a.letter.content.split("\n").slice(1).join("\n")}
+                      </pre>
+                    </article>
+                  )}
+                  <div className="letter-validation">
+                    {letter.missing.length > 0 && (
+                      <div className="item-blockers">
+                        <strong>Before verification</strong>
+                        <ul>
+                          {letter.missing.map((m) => (
+                            <li key={m}>{m}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {letter.stale && (
+                      <p className="stale-note">
+                        Saved content changed. Re-verification is required.
+                      </p>
+                    )}
+                    {letter.verified && letter.check && (
+                      <p className="verification-meta">
+                        <CheckCircle2 size={15} />
+                        Verified by {letter.check.verifiedBy.name} ·{" "}
+                        {dateTime(letter.check.verifiedAt)}
+                      </p>
+                    )}
+                    {letter.remark?.text && (
+                      <blockquote>
+                        {letter.remark.text}
+                        <small>
+                          {letter.remark.by} · {dateTime(letter.remark.at)}
+                        </small>
+                      </blockquote>
+                    )}
+                    {errors.letter && (
+                      <p role="alert" className="audit-error">
+                        {errors.letter}
+                      </p>
+                    )}
+                    {errors["letter-pdf"] && (
+                      <p role="alert" className="audit-error">
+                        {errors["letter-pdf"]}
+                      </p>
+                    )}
+                  </div>
+                </section>
+              ) : (
+                <>
+                  <div className="validation-section-heading">
+                    <div>
+                      <h2>{auditTabs[tab]}</h2>
+                      <p>
+                        {s.tabs[tab].verified}/{s.tabs[tab].required} applicable
+                        checks verified
+                      </p>
+                    </div>
+                    {model.canVerify && tab === 3 && (
+                      <div className="record-add">
+                        <select
+                          aria-label="Document type to add"
+                          value={newType}
+                          onChange={(e) => setNewType(e.target.value)}
+                        >
+                          {documentChoices.map((type) => (
+                            <option key={type}>{type}</option>
+                          ))}
+                        </select>
+                        <Button
+                          variant="outline"
+                          disabled={busy.includes("add")}
+                          onClick={() =>
+                            run(
+                              { action: "add-record", documentType: newType },
+                              "add",
+                            )
+                          }
+                        >
+                          <Plus size={14} />
+                          Add document
+                        </Button>
+                      </div>
+                    )}
+                    {model.canVerify && tab === 4 && (
+                      <div className="record-add">
+                        <select
+                          aria-label="Record type to add"
+                          value={newTable}
+                          onChange={(e) => setNewTable(e.target.value)}
+                        >
+                          {Object.entries(tables)
+                            .filter(([key]) => key !== "msme")
+                            .map(([key, value]) => (
+                              <option key={key} value={key}>
+                                {value.title}
+                              </option>
+                            ))}
+                        </select>
+                        <select
+                          aria-label="Facility for new consent"
+                          value={facility}
+                          onChange={(e) => setFacility(e.target.value)}
+                        >
+                          <option value="">New independent facility</option>
+                          {facilities.map(([id, name]) => (
+                            <option key={id} value={id}>
+                              {name} · {id.slice(-6)}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          variant="outline"
+                          disabled={busy.includes("add")}
+                          onClick={() =>
+                            run(
+                              {
+                                action: "add-record",
+                                table: newTable,
+                                ...(facility ? { facilityId: facility } : {}),
+                              },
+                              "add",
+                            )
+                          }
+                        >
+                          <Plus size={14} />
+                          Add record
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  {errors.add && (
+                    <p role="alert" className="audit-error">
+                      {errors.add}
+                    </p>
+                  )}
+                  {tab === 3 && letter.fileId && (
+                    <section className="engagement-file">
+                      <FileText size={20} />
+                      <div>
+                        <strong>Engagement Letter PDF</strong>
+                        <small>
+                          {letter.verified
+                            ? "Verified with Tab 1"
+                            : "Tab 1 verification pending"}
+                        </small>
+                      </div>
+                      <a
+                        href={"/api/files?id=" + letter.fileId + "&preview=1"}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Preview
+                      </a>
+                      <a href={"/api/files?id=" + letter.fileId}>Download</a>
+                      <Button variant="ghost" onClick={() => setTab(0)}>
+                        Open letter
+                      </Button>
                     </section>
-                  ))
-                : activeItems.map(card)}
-              {tab === 3 && model.canVerify && (
-                <Button
-                  variant="outline"
-                  disabled={busy.includes("add")}
-                  onClick={() =>
-                    run({ action: "add-record", table: "msme" }, "add")
-                  }
-                >
-                  <Plus size={14} />
-                  Add MSME record
-                </Button>
+                  )}
+                  {tab === 4
+                    ? [
+                        ...new Set(
+                          activeItems.map((i) => i.facilityId || "other"),
+                        ),
+                      ].map((id) => (
+                        <section className="facility-group" key={id}>
+                          <header>
+                            <Building2 size={17} />
+                            <div>
+                              <strong>
+                                {id === "other"
+                                  ? "Production & other records"
+                                  : a.facilities.find((f) => f.id === id)
+                                      ?.name || "Facility"}
+                              </strong>
+                              {id !== "other" && (
+                                <small>Facility ID: {id}</small>
+                              )}
+                            </div>
+                          </header>
+                          {activeItems
+                            .filter((i) => (i.facilityId || "other") === id)
+                            .map(card)}
+                        </section>
+                      ))
+                    : activeItems.map(card)}
+                  {tab === 3 && model.canVerify && (
+                    <Button
+                      variant="outline"
+                      disabled={busy.includes("add")}
+                      onClick={() =>
+                        run({ action: "add-record", table: "msme" }, "add")
+                      }
+                    >
+                      <Plus size={14} />
+                      Add MSME record
+                    </Button>
+                  )}
+                </>
               )}
-            </>
-          )}
+            </motion.div>
+          </AnimatePresence>
           <footer className="validation-completion">
             <div>
               <strong>
@@ -1182,6 +1237,108 @@ export function PreAuditWorkspace({
           )}
         </section>
       )}
+      <dialog
+        ref={verifyDialog}
+        className="audit-modal verify-checklist"
+        data-lenis-prevent
+        aria-labelledby="verify-checklist-title"
+        onCancel={(e) => {
+          if (busy.includes("verify-letter")) e.preventDefault();
+        }}
+      >
+        <header>
+          <div>
+            <span className="verify-eyebrow">VERIFICATION CHECKLIST</span>
+            <h2 id="verify-checklist-title">Finish a few details to verify</h2>
+          </div>
+          <button
+            aria-label="Close verification checklist"
+            disabled={busy.includes("verify-letter")}
+            onClick={() => verifyDialog.current?.close()}
+          >
+            <X size={20} />
+          </button>
+        </header>
+        <div className="verify-checklist-body">
+          <strong>{verifyItem?.title}</strong>
+          <p>
+            Your verification will be saved after these requirements are
+            complete.
+          </p>
+          <ul>
+            {verifyItem?.missing.map((reason, index) => (
+              <li key={index}>
+                <ShieldCheck size={16} />
+                {reason}
+              </li>
+            ))}
+          </ul>
+          {errors["verify-letter"] && (
+            <p role="alert" className="audit-error">
+              {errors["verify-letter"]}
+            </p>
+          )}
+        </div>
+        <footer>
+          <Button
+            variant="ghost"
+            disabled={busy.includes("verify-letter")}
+            onClick={() => verifyDialog.current?.close()}
+          >
+            Close
+          </Button>
+          {verifyItem?.key === "letter" ? (
+            <>
+              <Button
+                variant="outline"
+                disabled={busy.includes("verify-letter")}
+                onClick={() => {
+                  verifyDialog.current?.close();
+                  if (!letterEditing)
+                    setLetterDraft(current.current!.audit.letter.content);
+                  setLetterEditing(true);
+                }}
+              >
+                Edit letter
+              </Button>
+              {model.canConfigure && (
+                <Button
+                  variant="outline"
+                  disabled={busy.includes("verify-letter")}
+                  onClick={() => {
+                    verifyDialog.current?.close();
+                    settings();
+                  }}
+                >
+                  Audit settings
+                </Button>
+              )}
+              <Button
+                className="verify-action"
+                disabled={busy.includes("verify-letter")}
+                onClick={saveAndVerifyLetter}
+              >
+                {busy.includes("verify-letter") ? (
+                  <LoaderCircle size={15} className="spin" />
+                ) : (
+                  <ShieldCheck size={15} />
+                )}
+                Save & verify
+              </Button>
+            </>
+          ) : verifyItem && verifyItem.editableFields.length > 0 ? (
+            <Button
+              onClick={() => {
+                verifyDialog.current?.close();
+                edit(verifyItem);
+              }}
+            >
+              <Pencil size={15} />
+              Edit details
+            </Button>
+          ) : null}
+        </footer>
+      </dialog>
       <dialog
         ref={remarkDialog}
         className="audit-modal"

@@ -28,55 +28,47 @@ async function fixture(id, role) {
     licenseId = new ObjectId(),
     now = new Date();
   const email = `qa-${id}@example.invalid`;
-  await db
-    .collection("user")
-    .insertOne({
-      _id: id,
-      name: role === "admin" ? "QA Administrator" : "QA Member",
-      email,
-      emailVerified: true,
-      role,
-      banned: false,
-      createdAt: now,
-      updatedAt: now,
-    });
-  await db
-    .collection("session")
-    .insertOne({
-      _id: sessionId,
-      userId: id,
-      token,
-      expiresAt: new Date(Date.now() + 1200000),
-      createdAt: now,
-      updatedAt: now,
-    });
-  await db
-    .collection("licenses")
-    .insertOne({
-      _id: licenseId,
-      keyHash: randomBytes(32).toString("hex"),
-      keyPrefix: "TEST",
-      keyLast4: "0000",
-      assignedEmail: email,
-      issuedToName: "QA",
-      assignedUser: id.toString(),
-      status: "active",
-      maxDevices: 1,
-      expiresAt: null,
-      activatedDevices: [],
-      createdBy: id.toString(),
-      createdAt: now,
-      updatedAt: now,
-    });
-  await db
-    .collection("session_licenses")
-    .insertOne({
-      _id: sessionId.toString(),
-      userId: id.toString(),
-      licenseId,
-      verifiedUntil: new Date(Date.now() + 1200000),
-      verifiedAt: now,
-    });
+  await db.collection("user").insertOne({
+    _id: id,
+    name: role === "admin" ? "QA Administrator" : "QA Member",
+    email,
+    emailVerified: true,
+    role,
+    banned: false,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db.collection("session").insertOne({
+    _id: sessionId,
+    userId: id,
+    token,
+    expiresAt: new Date(Date.now() + 1200000),
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db.collection("licenses").insertOne({
+    _id: licenseId,
+    keyHash: randomBytes(32).toString("hex"),
+    keyPrefix: "TEST",
+    keyLast4: "0000",
+    assignedEmail: email,
+    issuedToName: "QA",
+    assignedUser: id.toString(),
+    status: "active",
+    maxDevices: 1,
+    expiresAt: null,
+    activatedDevices: [],
+    createdBy: id.toString(),
+    createdAt: now,
+    updatedAt: now,
+  });
+  await db.collection("session_licenses").insertOne({
+    _id: sessionId.toString(),
+    userId: id.toString(),
+    licenseId,
+    verifiedUntil: new Date(Date.now() + 1200000),
+    verifiedAt: now,
+  });
   return encodeURIComponent(
     token +
       "." +
@@ -90,7 +82,7 @@ async function parsePdf(bytes) {
     data: new Uint8Array(bytes),
     useSystemFonts: false,
   });
-  const pdf=await task.promise;
+  const pdf = await task.promise;
   let text = "";
   for (let n = 1; n <= pdf.numPages; n++) {
     const page = await pdf.getPage(n);
@@ -203,6 +195,41 @@ try {
     if (status === 200) state = data;
     return data;
   }
+  // Pending verification is clickable and explains blockers rather than silently disabling the action.
+  await page.goto(
+    base + "/clients/" + clientId + "/pre-audit?auditId=" + firstId,
+  );
+  const verifyButton = page
+    .locator(".letter-panel")
+    .getByRole("button", { name: "Verify", exact: true });
+  await verifyButton.waitFor();
+  assert.equal(await verifyButton.isEnabled(), true);
+  const paper = await page.locator(".audit-letter-paper").boundingBox();
+  const panel = await page.locator(".letter-panel").boundingBox();
+  assert.ok(
+    paper.width > panel.width * 0.95,
+    "Letter uses the available panel width",
+  );
+  await verifyButton.click();
+  await page
+    .getByRole("heading", { name: "Finish a few details to verify" })
+    .waitFor();
+  await page
+    .locator(".verify-checklist")
+    .getByText("Resolve placeholder [Auditor Company Address]", { exact: true })
+    .waitFor();
+  await page.screenshot({
+    path: "artifacts/preaudit-verification-checklist.png",
+  });
+  await page
+    .locator(".verify-checklist")
+    .getByRole("button", { name: "Edit letter", exact: true })
+    .click();
+  await page.getByLabel("Engagement letter content").waitFor();
+  await page
+    .locator(".letter-editor")
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
   assert.equal(state.canVerify, true);
   assert.equal(
     state.summary.items.find((i) => i.key === "coordinator").required,
@@ -219,6 +246,30 @@ try {
     firmName: "QA Audit & Compliance",
     firmAddress: "18 Auditor Street, Mumbai, Maharashtra 400001",
   });
+  // Save & verify performs both real server operations once the mandatory data is present.
+  await page.reload();
+  await page
+    .getByRole("heading", { name: "QA Audit & Compliance", exact: true })
+    .waitFor();
+  await page
+    .locator(".letter-panel")
+    .getByRole("button", { name: "Verify", exact: true })
+    .click();
+  await page
+    .locator(".verify-checklist")
+    .getByRole("button", { name: "Save & verify", exact: true })
+    .click();
+  await page.locator(".verify-checklist[open]").waitFor({ state: "hidden" });
+  await page
+    .locator(".letter-panel")
+    .getByRole("button", { name: "Verified", exact: true })
+    .waitFor();
+  state = await get();
+  assert.equal(state.audit.letter.saved, true);
+  assert.equal(
+    state.summary.items.find((i) => i.key === "letter").verified,
+    true,
+  );
   await change({
     action: "letter",
     content:
@@ -289,16 +340,14 @@ try {
     state.summary.items.find((i) => i.key === pan.key).verified,
     true,
   );
-  await db
-    .collection("client_audits")
-    .updateOne(
-      { _id: new ObjectId(firstId) },
-      {
-        $set: {
-          "snapshot.documents": [...state.audit.snapshot.documents].reverse(),
-        },
+  await db.collection("client_audits").updateOne(
+    { _id: new ObjectId(firstId) },
+    {
+      $set: {
+        "snapshot.documents": [...state.audit.snapshot.documents].reverse(),
       },
-    );
+    },
+  );
   state = await get();
   assert.equal(
     state.summary.items.find((i) => i.key === pan.key).verified,
