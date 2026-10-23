@@ -588,25 +588,23 @@ try {
     },
   });
   const sourceMsmeId = new ObjectId().toString();
-  await db
-    .collection("clients")
-    .updateOne(
-      { _id: new ObjectId(clientId) },
-      {
-        $set: {
-          "tables.msme": [
-            {
-              __rowId: sourceMsmeId,
-              Year: "2026-27",
-              Status: "Micro",
-              "Major activity": "Manufacturing",
-              "Udyam number": "QA-UDYAM-1",
-              Certificate: "",
-            },
-          ],
-        },
+  await db.collection("clients").updateOne(
+    { _id: new ObjectId(clientId) },
+    {
+      $set: {
+        "tables.msme": [
+          {
+            __rowId: sourceMsmeId,
+            Year: "2026-27",
+            Status: "Micro",
+            "Major activity": "Manufacturing",
+            "Udyam number": "QA-UDYAM-1",
+            Certificate: "",
+          },
+        ],
       },
-    );
+    },
+  );
   await page.reload();
   await page
     .locator(".validation-tabs")
@@ -641,13 +639,11 @@ try {
     (id) => document.activeElement?.getAttribute("data-recovery-record") === id,
     sourceMsmeId,
   );
-  await sourceMsmeRow
-    .locator('input[type="file"]')
-    .setInputFiles({
-      name: "msme.pdf",
-      mimeType: "application/pdf",
-      buffer: bytes,
-    });
+  await sourceMsmeRow.locator('input[type="file"]').setInputFiles({
+    name: "msme.pdf",
+    mimeType: "application/pdf",
+    buffer: bytes,
+  });
   await sourceMsmeRow
     .getByRole("link", { name: "msme.pdf", exact: true })
     .waitFor();
@@ -672,6 +668,60 @@ try {
     .waitFor();
   state = await get();
   assert.equal(state.audit.snapshot.tables.msme[0].__rowId, msme.recordId);
+  // Old Add MSME clicks left empty pending placeholders beside the real saved record.
+  await change({ action: "add-record", table: "msme" });
+  const blankMsme = state.audit.snapshot.tables.msme.find(
+    (row) => row.__pending === "true",
+  );
+  assert.ok(blankMsme);
+  assert.equal(
+    state.summary.items.some((item) => item.recordId === blankMsme.__rowId),
+    false,
+  );
+  assert.equal(
+    state.summary.items.find((item) => item.key === msme.key).verified,
+    true,
+  );
+  const oldMsmeUrl = new URL(msmeHref, base);
+  oldMsmeUrl.searchParams.set("recordId", blankMsme.__rowId);
+  const oldMsmePage = await context.newPage();
+  await oldMsmePage.goto(oldMsmeUrl.href);
+  await oldMsmePage.waitForFunction(
+    (id) => document.activeElement?.getAttribute("data-recovery-record") === id,
+    sourceMsmeId,
+  );
+  assert.equal(
+    await oldMsmePage.locator(".recovery-missing-section").count(),
+    0,
+  );
+  assert.equal(await oldMsmePage.locator(".recovery-missing-cell").count(), 0);
+  await oldMsmePage.close();
+  await db
+    .collection("client_audits")
+    .updateOne(
+      { _id: new ObjectId(firstId) },
+      {
+        $set: {
+          ["remarks.row-" + blankMsme.__rowId]: {
+            text: "Keep this separately requested record",
+            by: "QA",
+            at: new Date().toISOString(),
+          },
+        },
+      },
+    );
+  state = await get();
+  assert.equal(
+    state.summary.items.some((item) => item.recordId === blankMsme.__rowId),
+    true,
+  );
+  await db
+    .collection("client_audits")
+    .updateOne(
+      { _id: new ObjectId(firstId) },
+      { $unset: { ["remarks.row-" + blankMsme.__rowId]: "" } },
+    );
+  state = await get();
 
   await db.collection("client_audits").updateOne(
     { _id: new ObjectId(firstId) },

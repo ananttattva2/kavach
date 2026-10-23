@@ -1,6 +1,11 @@
 import type { ClientData } from "./schema";
 
 type Document = ClientData["documents"][number];
+export const isEmptyPendingRow = (row: Record<string, string>) =>
+  row.__pending === "true" &&
+  !Object.entries(row).some(
+    ([key, value]) => !key.startsWith("__") && Boolean(value?.trim()),
+  );
 export function matchAuditRow(
   source: Record<string, string>[],
   target: Record<string, string>,

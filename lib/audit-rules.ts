@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { onboardingChoices, tableChoices } from "./onboarding-choices";
 import { fieldMap, tables } from "./schema";
+import { isEmptyPendingRow } from "./audit-document-match";
 import type { AuditData, AuditItem, AuditSummary } from "./audit-types";
 export const fingerprint = (value: unknown): string =>
   createHash("sha256")
@@ -293,7 +294,15 @@ export function evaluateAudit(
   }
   for (const [table, config] of Object.entries(tables)) {
     const rows = (c.tables[table] || []).filter(
-      (r) => hasData(r) || r.__pending === "true",
+      (r) =>
+        (hasData(r) || r.__pending === "true") &&
+        !(
+          table === "msme" &&
+          isEmptyPendingRow(r) &&
+          (c.tables.msme || []).some(hasData) &&
+          !a.checks["row-" + r.__rowId] &&
+          !a.remarks["row-" + r.__rowId]
+        ),
     );
     if (table === "cte" || table === "cto") {
       if (

@@ -5,7 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { AuditResponse } from "@/lib/audit-types";
 import type { ClientData } from "@/lib/schema";
-import { matchAuditDocument, matchAuditRow } from "@/lib/audit-document-match";
+import {
+  matchAuditDocument,
+  matchAuditRow,
+  isEmptyPendingRow,
+} from "@/lib/audit-document-match";
 import "./document-recovery.css";
 
 type Document = ClientData["documents"][number];
@@ -43,10 +47,30 @@ export function useDocumentRecovery(data: ClientData, tab: number) {
     : target;
   const snapshotRows = audit.data?.audit.snapshot.tables[table] || [];
   const legacyRow = snapshotRows.find((row) => row.__rowId === recordId);
-  const sourceRowId = legacyRow
-    ? matchAuditRow(data.tables[table] || [], legacyRow, snapshotRows, table)
-        ?.__rowId || recordId
-    : recordId;
+  const savedRows =
+    table === "msme" &&
+    legacyRow &&
+    isEmptyPendingRow(legacyRow) &&
+    !audit.data?.audit.checks["row-" + recordId] &&
+    !audit.data?.audit.remarks["row-" + recordId]
+      ? snapshotRows
+          .filter((row) => !isEmptyPendingRow(row))
+          .map((row) =>
+            matchAuditRow(data.tables[table] || [], row, snapshotRows, table),
+          )
+          .filter((row) => Boolean(row))
+      : [];
+  const sourceRowId =
+    savedRows.length === 1
+      ? savedRows[0]!.__rowId
+      : legacyRow
+        ? matchAuditRow(
+            data.tables[table] || [],
+            legacyRow,
+            snapshotRows,
+            table,
+          )?.__rowId || recordId
+        : recordId;
   function tableRecovery(key: string) {
     if (!active || wrongYear || key !== table) return undefined;
     return {
