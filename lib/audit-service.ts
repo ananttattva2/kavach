@@ -1,7 +1,7 @@
 import { ObjectId, Binary, type Document } from "mongodb";
 import { z } from "zod";
 import { withStableRecordIds } from "./client-record-ids";
-import { matchAuditDocument } from "./audit-document-match";
+import { matchAuditDocument, matchAuditRow } from "./audit-document-match";
 import { db } from "./db";
 import { clientSchema, documentTypes, type ClientData } from "./schema";
 import { isAdministrator } from "./roles";
@@ -326,6 +326,7 @@ const command = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("remove-record"), key: safeId }),
   z.object({ action: z.literal("import-document"), key: verificationKey }),
+  z.object({ action: z.literal("import-record"), key: verificationKey }),
   z.object({
     action: z.literal("add-record"),
     table: z
@@ -512,6 +513,63 @@ export async function mutateAudit(
         (r) => r.__rowId === item!.recordId,
       )!.__facilityId = op.facilityId;
     }
+    set.snapshot = clientSchema.parse(snapshot);
+  }
+  if (op.action === "import-record") {
+    if (!item!.table || !item!.recordId)
+      throw new LicenseError(400, "Choose an existing record", "INVALID_ITEM");
+    const source = clientSchema.parse(await stableSource(clientId, session));
+    if (source.basic["Financial year"] !== a.year)
+      throw new LicenseError(
+        422,
+        "Onboarding and audit financial years differ",
+        "YEAR_MISMATCH",
+      );
+    const rows = a.snapshot.tables[item!.table] || [];
+    const target = rows.find((row) => row.__rowId === item!.recordId)!;
+    const sourceRow = matchAuditRow(
+      source.tables[item!.table] || [],
+      target,
+      rows,
+      item!.table,
+    );
+    if (!sourceRow)
+      throw new LicenseError(
+        422,
+        "This audit record cannot be uniquely matched to onboarding. Check its registration/reference number.",
+        "RECORD_MATCH_REQUIRED",
+      );
+    const fileId =
+      sourceRow[item!.table === "msme" ? "Certificate" : "Document"];
+    if (fileId) {
+      if (
+        !ObjectId.isValid(fileId) ||
+        !(await db()
+          .collection("files")
+          .findOne({
+            _id: new ObjectId(fileId),
+            ownerId: a.ownerId,
+            $or: [{ auditId: { $exists: false } }, { auditId: a.id }],
+          }))
+      )
+        throw new LicenseError(
+          422,
+          "Attached document is inaccessible. Replace it in onboarding.",
+          "MISSING_FILE",
+        );
+    }
+    const snapshot = structuredClone(a.snapshot);
+    snapshot.tables[item!.table] = rows.map((row) =>
+      row.__rowId === item!.recordId
+        ? {
+            ...sourceRow,
+            __rowId: target.__rowId,
+            ...(target.__facilityId
+              ? { __facilityId: target.__facilityId }
+              : {}),
+          }
+        : row,
+    );
     set.snapshot = clientSchema.parse(snapshot);
   }
   if (op.action === "import-document") {

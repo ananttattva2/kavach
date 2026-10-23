@@ -59,3 +59,32 @@
   text-align: left;
   cursor: pointer;
 }
+
+.registration-table-section tr.recovery-target {
+  outline: 2px solid #ce4141;
+  outline-offset: -2px;
+  scroll-margin: 120px;
+}
+.registration-table-section tr.recovery-missing td {
+  background: #fff7f7;
+}
+.registration-table-section td.recovery-missing-cell {
+  box-shadow: inset 0 -2px #ce4141;
+  background: #fff0f0;
+}
+.registration-table-section .recovery-field-error {
+  display: block;
+  margin-top: 6px;
+  color: #b12c2c;
+  font-size: 11px;
+}
+.registration-table-section [aria-invalid="true"] {
+  border-color: #ce4141;
+}
+
+.registration-table-section tr.recovery-target:not(.recovery-missing) {
+  outline-color: #16845b;
+}
+.registration-table-section.recovery-missing-section {
+  border-color: #ce4141;
+}

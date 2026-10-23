@@ -332,7 +332,11 @@ export function PreAuditWorkspace({
       "verify-document": "",
       "verify-letter": "",
     }));
-    if (item.documentType && item.recordId && item.missing.length) {
+    if (
+      (item.documentType || item.table) &&
+      item.recordId &&
+      item.missing.length
+    ) {
       await checkSavedDocument(item);
       return;
     }
@@ -427,7 +431,10 @@ export function PreAuditWorkspace({
     savingVerification.current = true;
     try {
       const saved = await run(
-        { action: "import-document", key: selectedItem.key },
+        {
+          action: selectedItem.table ? "import-record" : "import-document",
+          key: selectedItem.key,
+        },
         "verify-document",
       );
       if (!saved) {
@@ -757,26 +764,13 @@ export function PreAuditWorkspace({
           </div>
         </div>
         <progress max={100} value={s.percent} />
-        <Button
-          variant="outline"
-          disabled={busy.length > 0 || dirty}
-          title={dirty ? "Save or cancel letter edits first" : ""}
-          onClick={() => run({ action: "pdf", kind: "report" }, "report")}
-        >
-          <Download size={14} />
-          {busy.includes("report") ? "Generating…" : "Validation report PDF"}
-        </Button>
       </section>
       {notice && (
         <p role="status" className="audit-success">
           {notice}
         </p>
       )}
-      {errors.report && (
-        <p role="alert" className="audit-error">
-          {errors.report}
-        </p>
-      )}
+
       {stage !== "pre-audit" ? (
         <section className="onsite-ready">
           <CheckCircle2 size={38} />
@@ -1081,65 +1075,34 @@ export function PreAuditWorkspace({
               )}
             </motion.div>
           </AnimatePresence>
-          <footer className="validation-completion">
-            <div>
-              <strong>
-                {s.completed
-                  ? "All required checks are verified"
-                  : "Pre-audit verification is incomplete"}
-              </strong>
-              <span>
-                {a.stage === "pre-audit"
-                  ? "Complete verification to unlock Onsite Audit."
-                  : "Pre-audit has been completed for this audit."}
-              </span>
-            </div>
-            <Button
-              disabled={
-                !model.canVerify ||
-                busy.length > 0 ||
-                dirty ||
-                !s.completed ||
-                a.stage !== "pre-audit"
-              }
-              title={s.blockers.map((b) => b.title).join(", ")}
-              onClick={async () => {
-                const next = await run({ action: "complete" }, "complete");
-                if (next) {
-                  setStage("onsite");
-                  onComplete?.(next.audit);
+          {s.completed && (
+            <div className="audit-next-stage">
+              <Button
+                disabled={
+                  !model.canVerify ||
+                  busy.length > 0 ||
+                  dirty ||
+                  !s.completed ||
+                  a.stage !== "pre-audit"
                 }
-              }}
-            >
-              <ShieldCheck size={16} />
-              Complete verification / Move to Onsite Audit
-            </Button>
-          </footer>
+                title={s.blockers.map((b) => b.title).join(", ")}
+                onClick={async () => {
+                  const next = await run({ action: "complete" }, "complete");
+                  if (next) {
+                    setStage("onsite");
+                    onComplete?.(next.audit);
+                  }
+                }}
+              >
+                <ShieldCheck size={16} />
+                Complete verification / Move to Onsite Audit
+              </Button>
+            </div>
+          )}
           {errors.complete && (
             <p role="alert" className="audit-error">
               {errors.complete}
             </p>
-          )}
-          {s.blockers.length > 0 && (
-            <details className="pending-list">
-              <summary>
-                {s.blockers.length} checks need attention — view pending list
-              </summary>
-              {s.blockers.map((b) => (
-                <button
-                  key={b.key}
-                  onClick={() => {
-                    if (mayNavigate()) setTab(b.tab);
-                  }}
-                >
-                  <strong>
-                    {auditTabs[b.tab]} / {b.title}
-                  </strong>
-                  <span>{b.reasons.join("; ")}</span>
-                  <ChevronRight size={15} />
-                </button>
-              ))}
-            </details>
           )}
         </section>
       )}
@@ -1257,7 +1220,8 @@ export function PreAuditWorkspace({
                 Save & verify
               </Button>
             </>
-          ) : verifyItem?.documentType && verifyItem.recordId ? (
+          ) : (verifyItem?.documentType || verifyItem?.table) &&
+            verifyItem?.recordId ? (
             <>
               <a
                 className="document-source-link"
@@ -1268,8 +1232,16 @@ export function PreAuditWorkspace({
                     id: clientId,
                     stream: a.snapshot.wasteStream,
                     category: a.snapshot.registrationCategory,
-                    step: "documents",
-                    documentId: verifyItem.recordId,
+                    step:
+                      verifyItem.table && verifyItem.table !== "msme"
+                        ? "consents"
+                        : "documents",
+                    ...(verifyItem.table
+                      ? {
+                          table: verifyItem.table,
+                          recordId: verifyItem.recordId,
+                        }
+                      : { documentId: verifyItem.recordId }),
                     auditId: a.id,
                   }).toString()
                 }
@@ -1277,7 +1249,7 @@ export function PreAuditWorkspace({
                   if (!mayNavigate()) event.preventDefault();
                 }}
               >
-                Client documents
+                {verifyItem.table ? "Open missing details" : "Client documents"}
               </a>
               <Button
                 className="verify-action"
@@ -1289,7 +1261,9 @@ export function PreAuditWorkspace({
                 ) : (
                   <RotateCcw size={15} />
                 )}
-                Check saved document & verify
+                {verifyItem.table
+                  ? "Check saved record & verify"
+                  : "Check saved document & verify"}
               </Button>
             </>
           ) : null}

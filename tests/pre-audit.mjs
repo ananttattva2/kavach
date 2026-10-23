@@ -486,23 +486,21 @@ try {
     { arrayFilters: [{ "document.id": pan.recordId }] },
   );
   const duplicateId = new ObjectId().toString();
-  await db
-    .collection("clients")
-    .updateOne(
-      { _id: new ObjectId(clientId) },
-      {
-        $push: {
-          documents: {
-            id: duplicateId,
-            type: "PAN Card",
-            number: "QA-PAN-123",
-            date: "2026-04-01",
-            fileId: uploadId,
-            fileName: "pan.pdf",
-          },
+  await db.collection("clients").updateOne(
+    { _id: new ObjectId(clientId) },
+    {
+      $push: {
+        documents: {
+          id: duplicateId,
+          type: "PAN Card",
+          number: "QA-PAN-123",
+          date: "2026-04-01",
+          fileId: uploadId,
+          fileName: "pan.pdf",
         },
       },
-    );
+    },
+  );
   await change({ action: "import-document", key: pan.key }, 422);
   await db
     .collection("clients")
@@ -532,7 +530,12 @@ try {
       .count(),
     0,
   );
-  assert.equal(await savedDocumentsPage.locator(".document-target").getAttribute("data-document-id"), sourcePanId);
+  assert.equal(
+    await savedDocumentsPage
+      .locator(".document-target")
+      .getAttribute("data-document-id"),
+    sourcePanId,
+  );
   await savedDocumentsPage.close();
   const panRow = page.locator('[id="audit-item-' + pan.key + '"]');
   await panRow.getByRole("button", { name: "Verify", exact: true }).click();
@@ -569,6 +572,107 @@ try {
     state.summary.items.find((i) => i.key === pan.key).verified,
     true,
   );
+  // MSME correction opens the exact legacy source row and marks its missing certificate red.
+  await change({ action: "add-record", table: "msme" });
+  let msme = state.summary.items.find(
+    (item) => item.table === "msme" && item.recordId,
+  );
+  await change({
+    action: "edit",
+    key: msme.key,
+    values: {
+      Year: "2026-27",
+      Status: "Micro",
+      "Major activity": "Manufacturing",
+      "Udyam number": "QA-UDYAM-1",
+    },
+  });
+  const sourceMsmeId = new ObjectId().toString();
+  await db
+    .collection("clients")
+    .updateOne(
+      { _id: new ObjectId(clientId) },
+      {
+        $set: {
+          "tables.msme": [
+            {
+              __rowId: sourceMsmeId,
+              Year: "2026-27",
+              Status: "Micro",
+              "Major activity": "Manufacturing",
+              "Udyam number": "QA-UDYAM-1",
+              Certificate: "",
+            },
+          ],
+        },
+      },
+    );
+  await page.reload();
+  await page
+    .locator(".validation-tabs")
+    .getByRole("button", { name: /Company Documents/ })
+    .click();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Validation report PDF", exact: true })
+      .count(),
+    0,
+  );
+  assert.equal(
+    await page.locator(".pending-list, .validation-completion").count(),
+    0,
+  );
+  const msmeRow = page.locator('[id="audit-item-' + msme.key + '"]');
+  await msmeRow.getByRole("button", { name: "Verify", exact: true }).click();
+  const msmeHref = await page
+    .locator(".verify-checklist")
+    .getByRole("link", { name: "Open missing details", exact: true })
+    .getAttribute("href");
+  const msmePage = await context.newPage();
+  await msmePage.goto(base + msmeHref);
+  const sourceMsmeRow = msmePage.locator(
+    '[data-recovery-record="' + sourceMsmeId + '"]',
+  );
+  await sourceMsmeRow
+    .locator(".recovery-missing-cell")
+    .getByText("Attached document is missing", { exact: true })
+    .waitFor();
+  await msmePage.waitForFunction(
+    (id) => document.activeElement?.getAttribute("data-recovery-record") === id,
+    sourceMsmeId,
+  );
+  await sourceMsmeRow
+    .locator('input[type="file"]')
+    .setInputFiles({
+      name: "msme.pdf",
+      mimeType: "application/pdf",
+      buffer: bytes,
+    });
+  await sourceMsmeRow
+    .getByRole("link", { name: "msme.pdf", exact: true })
+    .waitFor();
+  await sourceMsmeRow
+    .getByRole("button", { name: "Save MSME details row 1", exact: true })
+    .click();
+  await msmePage
+    .getByText("Entry saved to the client record.", { exact: true })
+    .waitFor();
+  assert.equal(
+    await sourceMsmeRow.locator(".recovery-missing-cell").count(),
+    0,
+  );
+  await msmePage.close();
+  await page
+    .locator(".verify-checklist")
+    .getByRole("button", { name: "Check saved record & verify", exact: true })
+    .click();
+  await page.locator(".verify-checklist[open]").waitFor({ state: "hidden" });
+  await msmeRow
+    .getByRole("button", { name: "Verified", exact: true })
+    .waitFor();
+  state = await get();
+  assert.equal(state.audit.snapshot.tables.msme[0].__rowId, msme.recordId);
+
   await db.collection("client_audits").updateOne(
     { _id: new ObjectId(firstId) },
     {
