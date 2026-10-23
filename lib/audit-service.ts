@@ -1,6 +1,7 @@
 import { ObjectId, Binary, type Document } from "mongodb";
 import { z } from "zod";
 import { withStableRecordIds } from "./client-record-ids";
+import { matchAuditDocument } from "./audit-document-match";
 import { db } from "./db";
 import { clientSchema, documentTypes, type ClientData } from "./schema";
 import { isAdministrator } from "./roles";
@@ -527,9 +528,20 @@ export async function mutateAudit(
         "The onboarding financial year differs from this audit. Open the correct year's client documents first.",
         "YEAR_MISMATCH",
       );
-    const document = source.documents.find(
-      (doc) => doc.id === item!.recordId && doc.type === item!.documentType,
+    const target = a.snapshot.documents.find(
+      (doc) => doc.id === item!.recordId,
+    )!;
+    const document = matchAuditDocument(
+      source.documents,
+      target,
+      a.snapshot.documents,
     );
+    if (!document)
+      throw new LicenseError(
+        422,
+        "This legacy audit document cannot be uniquely matched to onboarding. Check its document type and certificate number; duplicate registrations must be resolved before verification.",
+        "DOCUMENT_MATCH_REQUIRED",
+      );
     if (!document?.fileId || !ObjectId.isValid(document.fileId))
       throw new LicenseError(
         422,
@@ -551,7 +563,7 @@ export async function mutateAudit(
       );
     const snapshot = structuredClone(a.snapshot);
     snapshot.documents = snapshot.documents.map((doc) =>
-      doc.id === item!.recordId ? { ...document } : doc,
+      doc.id === item!.recordId ? { ...document, id: doc.id } : doc,
     );
     set.snapshot = clientSchema.parse(snapshot);
   }

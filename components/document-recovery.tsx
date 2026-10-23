@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import type { AuditResponse } from "@/lib/audit-types";
 import type { ClientData } from "@/lib/schema";
+import { matchAuditDocument } from "@/lib/audit-document-match";
 import "./document-recovery.css";
 
 type Document = ClientData["documents"][number];
@@ -33,10 +34,23 @@ export function useDocumentRecovery(data: ClientData, tab: number) {
   const wrongYear = Boolean(
     audit.data && audit.data.audit.year !== data.basic["Financial year"],
   );
+  const snapshot = audit.data?.audit.snapshot.documents || [];
+  const legacyTarget = snapshot.find((document) => document.id === target);
+  const sourceTarget = legacyTarget
+    ? matchAuditDocument(data.documents, legacyTarget, snapshot)?.id || target
+    : target;
   function issues(doc: Document) {
     if (!active || wrongYear) return [];
     const item = audit.data?.summary.items.find(
-      (entry) => entry.documentType && entry.recordId === doc.id,
+      (entry) =>
+        entry.documentType &&
+        (entry.recordId === doc.id ||
+          snapshot.some(
+            (record) =>
+              record.id === entry.recordId &&
+              matchAuditDocument(data.documents, record, snapshot)?.id ===
+                doc.id,
+          )),
     );
     if (!(item?.required || doc.number || doc.date || doc.fileId)) return [];
     const missing: string[] = [];
@@ -65,7 +79,7 @@ export function useDocumentRecovery(data: ClientData, tab: number) {
     function focusTarget() {
       const row = Array.from(
         document.querySelectorAll<HTMLElement>("[data-document-id]"),
-      ).find((element) => element.dataset.documentId === target);
+      ).find((element) => element.dataset.documentId === sourceTarget);
       if (!row) return false;
       row.scrollIntoView({ block: "center", behavior: "instant" });
       row.focus({ preventScroll: true });
@@ -77,6 +91,6 @@ export function useDocumentRecovery(data: ClientData, tab: number) {
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [active, tab, target, auditId, audit.isPending]);
-  return { active, target, issues, audit, wrongYear };
+  }, [active, tab, sourceTarget, auditId, audit.isPending]);
+  return { active, target: sourceTarget, issues, audit, wrongYear };
 }

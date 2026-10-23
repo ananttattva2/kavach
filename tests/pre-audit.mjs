@@ -464,11 +464,19 @@ try {
   });
   await recoveryPage.close();
 
+  // Reproduce the real legacy client: snapshot and source have independent IDs.
+  await change({
+    action: "edit",
+    key: pan.key,
+    values: { "Certificate number": "QA-PAN-123" },
+  });
+  const sourcePanId = new ObjectId().toString();
   // A saved onboarding attachment can be imported by stable ID without syncing other records.
   await db.collection("clients").updateOne(
     { _id: new ObjectId(clientId) },
     {
       $set: {
+        "documents.$[document].id": sourcePanId,
         "documents.$[document].fileId": uploadId,
         "documents.$[document].fileName": "pan.pdf",
         "documents.$[document].number": "QA-PAN-123",
@@ -477,6 +485,31 @@ try {
     },
     { arrayFilters: [{ "document.id": pan.recordId }] },
   );
+  const duplicateId = new ObjectId().toString();
+  await db
+    .collection("clients")
+    .updateOne(
+      { _id: new ObjectId(clientId) },
+      {
+        $push: {
+          documents: {
+            id: duplicateId,
+            type: "PAN Card",
+            number: "QA-PAN-123",
+            date: "2026-04-01",
+            fileId: uploadId,
+            fileName: "pan.pdf",
+          },
+        },
+      },
+    );
+  await change({ action: "import-document", key: pan.key }, 422);
+  await db
+    .collection("clients")
+    .updateOne(
+      { _id: new ObjectId(clientId) },
+      { $pull: { documents: { id: duplicateId } } },
+    );
   await page.reload();
   await page
     .locator(".validation-tabs")
@@ -499,6 +532,7 @@ try {
       .count(),
     0,
   );
+  assert.equal(await savedDocumentsPage.locator(".document-target").getAttribute("data-document-id"), sourcePanId);
   await savedDocumentsPage.close();
   const panRow = page.locator('[id="audit-item-' + pan.key + '"]');
   await panRow.getByRole("button", { name: "Verify", exact: true }).click();
