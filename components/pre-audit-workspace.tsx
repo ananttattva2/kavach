@@ -458,42 +458,6 @@ export function PreAuditWorkspace({
             ))}
           </dl>
         </td>
-        <td className="record-review">
-          {item.naReason && <p className="na-reason">{item.naReason}</p>}
-          {item.missing.length > 0 && (
-            <div className="item-blockers">
-              <strong>Needs attention</strong>
-              <ul>
-                {item.missing.map((m, i) => (
-                  <li key={i}>{m}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {item.stale && (
-            <p className="stale-note">
-              Content changed after verification. Review and verify again.
-            </p>
-          )}
-          {item.verified && item.check && (
-            <p className="verification-meta">
-              <Check size={14} />
-              Verified by {item.check.verifiedBy.name} ·{" "}
-              {dateTime(item.check.verifiedAt)}
-            </p>
-          )}
-          {item.remark?.text && (
-            <blockquote>
-              <MessageSquare size={14} />
-              <div>
-                {item.remark.text}
-                <small>
-                  {item.remark.by} · {dateTime(item.remark.at)}
-                </small>
-              </div>
-            </blockquote>
-          )}
-        </td>
         <td className="record-actions">
           <footer>
             {item.fileId && (
@@ -592,7 +556,6 @@ export function PreAuditWorkspace({
             <tr>
               <th scope="col">Section / record</th>
               <th scope="col">Details</th>
-              <th scope="col">Review & remarks</th>
               <th scope="col">Actions</th>
             </tr>
           </thead>

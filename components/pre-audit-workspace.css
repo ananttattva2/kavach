@@ -421,7 +421,7 @@
 }
 .validation-records-table {
   width: 100%;
-  min-width: 920px;
+  min-width: 720px;
   border-collapse: collapse;
   table-layout: fixed;
   text-align: left;
@@ -436,16 +436,13 @@
   text-transform: uppercase;
 }
 .validation-records-table th:nth-child(1) {
-  width: 19%;
+  width: 24%;
 }
 .validation-records-table th:nth-child(2) {
-  width: 35%;
+  width: 50%;
 }
 .validation-records-table th:nth-child(3) {
   width: 26%;
-}
-.validation-records-table th:nth-child(4) {
-  width: 20%;
 }
 .validation-records-table .validation-table-row {
   border: 0;
@@ -495,14 +492,6 @@
   margin: 0;
   font-size: 11px;
   line-height: 1.7;
-}
-.validation-table-row .record-review > * {
-  margin: 0 0 12px;
-}
-.record-review:empty::after {
-  content: "Ready for review";
-  color: #84958c;
-  font-size: 11px;
 }
 .validation-table-row .record-actions > footer {
   display: flex;
