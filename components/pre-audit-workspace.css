@@ -421,13 +421,13 @@
 }
 .validation-records-table {
   width: 100%;
-  min-width: 720px;
+  min-width: 900px;
   border-collapse: collapse;
   table-layout: fixed;
   text-align: left;
 }
 .validation-records-table th {
-  padding: 16px;
+  padding: 12px 16px;
   background: #edf5f0;
   color: #426355;
   font-size: 11px;
@@ -436,13 +436,13 @@
   text-transform: uppercase;
 }
 .validation-records-table th:nth-child(1) {
-  width: 24%;
+  width: 22%;
 }
 .validation-records-table th:nth-child(2) {
-  width: 50%;
+  width: auto;
 }
 .validation-records-table th:nth-child(3) {
-  width: 26%;
+  width: 240px;
 }
 .validation-records-table .validation-table-row {
   border: 0;
@@ -457,13 +457,13 @@
   border-bottom: 0;
 }
 .validation-table-row > td {
-  padding: 20px 16px;
+  padding: 14px 16px;
   vertical-align: top;
   overflow-wrap: anywhere;
 }
 .record-identity .check-status {
   display: inline-flex;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 .record-identity > div > small {
   display: block;
@@ -472,15 +472,15 @@
   font-size: 10px;
 }
 .validation-table-row .validation-fields {
-  display: block;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 24px;
   padding: 0;
 }
 .validation-table-row .validation-fields > div {
-  display: grid;
-  grid-template-columns: minmax(100px, 40%) minmax(0, 1fr);
-  gap: 12px;
-  padding: 9px 0;
-  border-bottom: 1px solid #edf1ee;
+  display: block;
+  padding: 0;
+  border: 0;
 }
 .validation-table-row .validation-fields > div:first-child {
   padding-top: 0;
@@ -489,15 +489,45 @@
   border-bottom: 0;
 }
 .validation-table-row .validation-fields dt {
-  margin: 0;
+  margin: 0 0 2px;
   font-size: 11px;
   line-height: 1.7;
 }
 .validation-table-row .record-actions > footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  gap: 6px 8px;
   align-items: center;
+}
+.record-actions .verify-action {
+  grid-column: 1;
+  grid-row: 1;
+  width: 100%;
+}
+.record-actions .record-remark {
+  grid-column: 1;
+  grid-row: 2;
+  width: 100%;
+}
+.record-actions .record-delete {
+  grid-column: 2;
+  grid-row: 1;
+  width: 32px;
+  padding: 0;
+}
+.record-actions .record-preview {
+  grid-column: 1;
+  grid-row: 3;
+  justify-self: start;
+}
+.record-actions .record-download {
+  grid-column: 1;
+  grid-row: 3;
+  justify-self: end;
+}
+.record-actions .record-add-missing {
+  grid-column: 1 / -1;
+  grid-row: 4;
 }
 .record-actions footer a {
   color: #176344;

@@ -463,19 +463,26 @@ export function PreAuditWorkspace({
             {item.fileId && (
               <>
                 <a
+                  className="record-preview"
                   href={"/api/files?id=" + item.fileId + "&preview=1"}
                   target="_blank"
                   rel="noreferrer"
                 >
                   Preview
                 </a>
-                <a href={"/api/files?id=" + item.fileId}>Download</a>
+                <a
+                  className="record-download"
+                  href={"/api/files?id=" + item.fileId}
+                >
+                  Download
+                </a>
               </>
             )}
             {model?.canVerify && (
               <>
                 <Button
                   variant="outline"
+                  className="record-remark"
                   disabled={waiting}
                   onClick={() => remark(item)}
                 >
@@ -485,6 +492,7 @@ export function PreAuditWorkspace({
                 {item.recordId && (
                   <Button
                     variant="ghost"
+                    className="record-delete"
                     disabled={waiting}
                     aria-label={"Delete " + item.title}
                     onClick={() => {
@@ -521,6 +529,7 @@ export function PreAuditWorkspace({
             )}
             {item.documentType && !item.recordId && model?.canVerify && (
               <Button
+                className="record-add-missing"
                 onClick={() =>
                   run(
                     { action: "add-record", documentType: item.documentType },
