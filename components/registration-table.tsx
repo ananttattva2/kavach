@@ -2,10 +2,11 @@
 import { useRef, useState } from 'react';
 import { Download, LoaderCircle, Plus, RotateCcw, Save, Trash2, Upload } from 'lucide-react';
 import { BlobButton } from './ui/blob-button';
+import { tableChoices as options } from '@/lib/onboarding-choices';
 import { tables } from '@/lib/schema';
 import './registration-tables.css';
 type Row=Record<string,string>;
-const options:Record<string,string[]>={Status:['Micro','Small','Medium'],'Major activity':['Manufacturing','Services','Trading'],Category:['Green','Orange','Red','White'],'Industry type':['Micro','Small','Medium','Large'],'CTO / CCA type':['Fresh','Renewal','Amendment'],UOM:['KG','MT','MT/Year','KLD','Units'],'Ground / bore well water usage':['Yes','No'],'CGWA NOC requirement':['Not Applicable','Required','Available','Applied'],Regulation:['Water','Air','Hazardous waste','Solid waste']};
+
 export function RegistrationTable({tableKey,values,onChange,onSave,onUpload,plants=[]}:{tableKey:keyof typeof tables;values:Row[];onChange:(rows:Row[])=>void;onSave:(rows:Row[])=>Promise<void>;onUpload:(file:File)=>Promise<{id:string;name:string}>;plants?:string[]}){
  const config=tables[tableKey];const saved=useRef(new Map(values.map((row,index)=>[row.__rowId||'row-'+index,{...row}])));const[busy,setBusy]=useState<string|null>(null),[message,setMessage]=useState(''),[error,setError]=useState('');
  function rowId(row:Row,index:number){return row.__rowId||'row-'+index;}

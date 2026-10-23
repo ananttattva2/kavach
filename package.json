@@ -10,6 +10,7 @@
     "test:cinematic": "node tests/dashboard.mjs",
     "test:login": "node tests/login-gallery.mjs",
     "test:dashboard": "node tests/dashboard.mjs",
+    "test:onboarding-bot": "node tests/onboarding-bot.mjs",
     "test:licenses": "node tests/license-profile.mjs",
     "test:users": "node tests/admin-users.mjs"
   },
