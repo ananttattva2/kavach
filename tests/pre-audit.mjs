@@ -409,6 +409,48 @@ try {
   });
   assert.equal(uploaded.status(), 200);
   const uploadId = (await uploaded.json()).id;
+  await change({ action: "import-document", key: pan.key }, 422);
+  // A saved onboarding attachment can be imported by stable ID without syncing other records.
+  await db.collection("clients").updateOne(
+    { _id: new ObjectId(clientId) },
+    {
+      $set: {
+        "documents.$[document].fileId": uploadId,
+        "documents.$[document].fileName": "pan.pdf",
+        "documents.$[document].number": "QA-PAN-123",
+        "documents.$[document].date": "2026-04-01",
+      },
+    },
+    { arrayFilters: [{ "document.id": pan.recordId }] },
+  );
+  await page.reload();
+  await page
+    .locator(".validation-tabs")
+    .getByRole("button", { name: /Company Documents/ })
+    .click();
+  const panRow = page.locator('[id="audit-item-' + pan.key + '"]');
+  await panRow.getByRole("button", { name: "Verify", exact: true }).click();
+  await page
+    .locator(".verify-checklist")
+    .getByRole("link", { name: "Client documents", exact: true })
+    .waitFor();
+  await page
+    .locator(".verify-checklist")
+    .getByRole("button", { name: "Check saved document & verify", exact: true })
+    .click();
+  await page.locator(".verify-checklist[open]").waitFor({ state: "hidden" });
+  await panRow.getByRole("button", { name: "Verified", exact: true }).waitFor();
+  state = await get();
+  assert.equal(
+    state.summary.items.find((item) => item.key === pan.key).verified,
+    true,
+  );
+  assert.equal(
+    state.audit.snapshot.documents.find((doc) => doc.id === pan.recordId)
+      .fileId,
+    uploadId,
+  );
+
   await change({
     action: "edit",
     key: pan.key,

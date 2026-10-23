@@ -89,6 +89,8 @@ export function PreAuditWorkspace({
   const current = useRef<Model | null>(null),
     generation = useRef(0),
     locks = useRef(new Set<string>());
+  const verificationBusy =
+    busy.includes("verify-letter") || busy.includes("verify-document");
   const [letterDraft, setLetterDraft] = useState(""),
     [letterEditing, setLetterEditing] = useState(false);
   const [remarkItem, setRemarkItem] = useState<AuditItem | null>(null),
@@ -330,6 +332,11 @@ export function PreAuditWorkspace({
     if (verifyItem && modal?.isConnected && !modal.open) modal.showModal();
   }, [verifyItem]);
   async function verify(item: AuditItem) {
+    setErrors((previous) => ({
+      ...previous,
+      "verify-document": "",
+      "verify-letter": "",
+    }));
     const reasons =
       item.key === "letter" && dirty
         ? ["Save the unsaved letter edits before verification", ...item.missing]
@@ -409,6 +416,30 @@ export function PreAuditWorkspace({
       const verified = await run(
         { action: "verify", key: "letter", fingerprint: item.fingerprint },
         "verify-letter",
+      );
+      if (verified) verifyDialog.current?.close();
+    } finally {
+      savingVerification.current = false;
+    }
+  }
+  async function checkSavedDocument() {
+    if (!verifyItem || savingVerification.current) return;
+    savingVerification.current = true;
+    try {
+      const saved = await run(
+        { action: "import-document", key: verifyItem.key },
+        "verify-document",
+      );
+      if (!saved) return;
+      const item = saved.summary.items.find(
+        (entry) => entry.key === verifyItem.key,
+      );
+      if (!item) return;
+      setVerifyItem(item);
+      if (item.missing.length) return;
+      const verified = await run(
+        { action: "verify", key: item.key, fingerprint: item.fingerprint },
+        "verify-document",
       );
       if (verified) verifyDialog.current?.close();
     } finally {
@@ -874,7 +905,7 @@ export function PreAuditWorkspace({
                             disabled={
                               letter.verified ||
                               busy.includes("letter") ||
-                              busy.includes("verify-letter")
+                              verificationBusy
                             }
                             title={letter.missing.join("; ")}
                             onClick={() => verify(letter)}
@@ -1238,7 +1269,7 @@ export function PreAuditWorkspace({
         data-lenis-prevent
         aria-labelledby="verify-checklist-title"
         onCancel={(e) => {
-          if (busy.includes("verify-letter")) e.preventDefault();
+          if (verificationBusy) e.preventDefault();
         }}
       >
         <header>
@@ -1248,7 +1279,7 @@ export function PreAuditWorkspace({
           </div>
           <button
             aria-label="Close verification checklist"
-            disabled={busy.includes("verify-letter")}
+            disabled={verificationBusy}
             onClick={() => verifyDialog.current?.close()}
           >
             <X size={20} />
@@ -1280,9 +1311,7 @@ export function PreAuditWorkspace({
                   onChange={(event) =>
                     setVerificationAddress(event.target.value)
                   }
-                  disabled={
-                    !model.canConfigure || busy.includes("verify-letter")
-                  }
+                  disabled={!model.canConfigure || verificationBusy}
                   maxLength={1000}
                   rows={3}
                   placeholder="Enter the actual registered address of the audit firm"
@@ -1299,11 +1328,23 @@ export function PreAuditWorkspace({
               {errors["verify-letter"]}
             </p>
           )}
+          {verifyItem?.documentType && (
+            <p>
+              Certificate details alone do not include a document file. Save the
+              attachment in client onboarding, then check the saved document
+              here.
+            </p>
+          )}
+          {errors["verify-document"] && (
+            <p role="alert" className="audit-error">
+              {errors["verify-document"]}
+            </p>
+          )}
         </div>
         <footer>
           <Button
             variant="ghost"
-            disabled={busy.includes("verify-letter")}
+            disabled={verificationBusy}
             onClick={() => verifyDialog.current?.close()}
           >
             Close
@@ -1313,7 +1354,7 @@ export function PreAuditWorkspace({
               {model.canConfigure && (
                 <Button
                   variant="outline"
-                  disabled={busy.includes("verify-letter")}
+                  disabled={verificationBusy}
                   onClick={() => {
                     verifyDialog.current?.close();
                     settings();
@@ -1324,15 +1365,47 @@ export function PreAuditWorkspace({
               )}
               <Button
                 className="verify-action"
-                disabled={busy.includes("verify-letter")}
+                disabled={verificationBusy}
                 onClick={saveAndVerifyLetter}
               >
-                {busy.includes("verify-letter") ? (
+                {verificationBusy ? (
                   <LoaderCircle size={15} className="spin" />
                 ) : (
                   <ShieldCheck size={15} />
                 )}
                 Save & verify
+              </Button>
+            </>
+          ) : verifyItem?.documentType && verifyItem.recordId ? (
+            <>
+              <a
+                className="document-source-link"
+                href={
+                  "/dashboard?" +
+                  new URLSearchParams({
+                    view: "onboarding",
+                    id: clientId,
+                    stream: a.snapshot.wasteStream,
+                    category: a.snapshot.registrationCategory,
+                  }).toString()
+                }
+                onClick={(event) => {
+                  if (!mayNavigate()) event.preventDefault();
+                }}
+              >
+                Client documents
+              </a>
+              <Button
+                className="verify-action"
+                disabled={busy.includes("verify-document")}
+                onClick={checkSavedDocument}
+              >
+                {busy.includes("verify-document") ? (
+                  <LoaderCircle size={15} className="spin" />
+                ) : (
+                  <RotateCcw size={15} />
+                )}
+                Check saved document & verify
               </Button>
             </>
           ) : null}

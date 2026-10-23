@@ -1263,6 +1263,26 @@
   color: #647b72;
   font-weight: 400;
 }
+.document-source-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 16px;
+  border: 1px solid #dce7df;
+  border-radius: 10px;
+  color: #176344;
+  background: white;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color 180ms ease;
+}
+.document-source-link:hover {
+  background: #edf7f0;
+}
+.document-source-link:focus-visible {
+  outline: 2px solid #16845b;
+  outline-offset: 3px;
+}
 .verify-checklist-body > strong {
   font-size: 15px;
   color: #29435a;

@@ -19,7 +19,7 @@ export const auditDocumentTypes = [
   "E-waste Registration",
   "EEE Import Authorization",
 ];
-const verificationKey=z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/);
+const verificationKey = z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/);
 const safeId = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 const yearSchema = z
   .string()
@@ -324,6 +324,7 @@ const command = z.discriminatedUnion("action", [
     fileId: z.string().regex(/^[a-f\d]{24}$/),
   }),
   z.object({ action: z.literal("remove-record"), key: safeId }),
+  z.object({ action: z.literal("import-document"), key: verificationKey }),
   z.object({
     action: z.literal("add-record"),
     table: z
@@ -510,6 +511,48 @@ export async function mutateAudit(
         (r) => r.__rowId === item!.recordId,
       )!.__facilityId = op.facilityId;
     }
+    set.snapshot = clientSchema.parse(snapshot);
+  }
+  if (op.action === "import-document") {
+    if (!item!.documentType || !item!.recordId)
+      throw new LicenseError(
+        400,
+        "Choose an existing company document",
+        "INVALID_ITEM",
+      );
+    const source = clientSchema.parse(await stableSource(clientId, session));
+    if (source.basic["Financial year"] !== a.year)
+      throw new LicenseError(
+        422,
+        "The onboarding financial year differs from this audit. Open the correct year's client documents first.",
+        "YEAR_MISMATCH",
+      );
+    const document = source.documents.find(
+      (doc) => doc.id === item!.recordId && doc.type === item!.documentType,
+    );
+    if (!document?.fileId || !ObjectId.isValid(document.fileId))
+      throw new LicenseError(
+        422,
+        "No file is attached to this document in client onboarding. Open Client documents, attach the actual file and save, then return here and check again.",
+        "MISSING_FILE",
+      );
+    const file = await db()
+      .collection("files")
+      .findOne({
+        _id: new ObjectId(document.fileId),
+        ownerId: a.ownerId,
+        $or: [{ auditId: { $exists: false } }, { auditId: a.id }],
+      });
+    if (!file)
+      throw new LicenseError(
+        422,
+        "The saved document file is inaccessible. Correct its attachment in client onboarding first.",
+        "MISSING_FILE",
+      );
+    const snapshot = structuredClone(a.snapshot);
+    snapshot.documents = snapshot.documents.map((doc) =>
+      doc.id === item!.recordId ? { ...document } : doc,
+    );
     set.snapshot = clientSchema.parse(snapshot);
   }
   if (op.action === "replace-file") {
