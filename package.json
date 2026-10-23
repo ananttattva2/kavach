@@ -10,6 +10,7 @@
     "test:cinematic": "node tests/dashboard.mjs",
     "test:login": "node tests/login-gallery.mjs",
     "test:dashboard": "node tests/dashboard.mjs",
+    "test:pre-audit": "node tests/pre-audit.mjs",
     "test:onboarding-bot": "node tests/onboarding-bot.mjs",
     "test:licenses": "node tests/license-profile.mjs",
     "test:users": "node tests/admin-users.mjs"
@@ -29,20 +30,23 @@
     "mongodb": "^6.0.0",
     "motion": "latest",
     "next": "^16.0.0",
+    "pdfkit": "^0.20.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "latest",
+    "sharp": "^0.35.5",
     "tailwind-merge": "latest",
     "zod": "latest",
-    "zustand": "latest",
-    "sharp": "^0.35.5"
+    "zustand": "latest"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "latest",
+    "@types/pdfkit": "^0.17.7",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "pdfjs-dist": "^6.4.299",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

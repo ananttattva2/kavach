@@ -36,3 +36,5 @@ Local sign-in: use http://localhost:9000/login. When BETTER_AUTH_URL is a loopba
 Current signed-in flow: see [DASHBOARD.md](DASHBOARD.md) for the direct dashboard, sidebar, waste-stream registration categories and verification.
 
 Admin JSON assistant: administrators and super admins see **Fill with JSON** above the onboarding steps. Download the template or use the current form template, paste the completed JSON, click **Validate JSON**, then **Fill all steps**. Review the form and click **Submit onboarding** to use the existing confirmation and pre-audit flow. Supplied fields update the current client; omitted fields, existing table rows and uploaded files remain in place. Table rows match by position. JSON supports document certificate numbers and dates; upload the actual files in the form. Record IDs, status, waste stream and registration category cannot be changed through the import. Run `npm run test:onboarding-bot` against the local server for the admin/user browser checks.
+
+Pre-audit verification, audit/year isolation, engagement and validation PDFs, permissions, migration behavior and acceptance checks: see [PRE_AUDIT.md](PRE_AUDIT.md).
