@@ -482,18 +482,28 @@ try {
     .locator(".validation-tabs")
     .getByRole("button", { name: /Company Documents/ })
     .click();
+  const savedDocumentsPage = await context.newPage();
+  await savedDocumentsPage.goto(base + recoveryHref);
+  await savedDocumentsPage
+    .getByText("All document details are saved", { exact: true })
+    .waitFor();
+  assert.equal(
+    await savedDocumentsPage
+      .locator(".document-recovery-summary.documents-ready")
+      .count(),
+    1,
+  );
+  assert.equal(
+    await savedDocumentsPage
+      .getByText("0 document(s) need attention", { exact: true })
+      .count(),
+    0,
+  );
+  await savedDocumentsPage.close();
   const panRow = page.locator('[id="audit-item-' + pan.key + '"]');
   await panRow.getByRole("button", { name: "Verify", exact: true }).click();
-  await page
-    .locator(".verify-checklist")
-    .getByRole("link", { name: "Client documents", exact: true })
-    .waitFor();
-  await page
-    .locator(".verify-checklist")
-    .getByRole("button", { name: "Check saved document & verify", exact: true })
-    .click();
-  await page.locator(".verify-checklist[open]").waitFor({ state: "hidden" });
   await panRow.getByRole("button", { name: "Verified", exact: true }).waitFor();
+  assert.equal(await page.locator(".verify-checklist[open]").count(), 0);
   state = await get();
   assert.equal(
     state.summary.items.find((item) => item.key === pan.key).verified,

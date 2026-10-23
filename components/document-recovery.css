@@ -38,6 +38,11 @@
   color: #a12f2f;
   font-size: 12px;
 }
+.document-recovery-summary.documents-ready {
+  border-color: #bfdfcc;
+  background: #f0f8f3;
+  color: #176344;
+}
 .document-recovery-summary p {
   margin: 6px 0 0;
 }

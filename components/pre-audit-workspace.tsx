@@ -332,6 +332,10 @@ export function PreAuditWorkspace({
       "verify-document": "",
       "verify-letter": "",
     }));
+    if (item.documentType && item.recordId && item.missing.length) {
+      await checkSavedDocument(item);
+      return;
+    }
     const reasons =
       item.key === "letter" && dirty
         ? ["Save the unsaved letter edits before verification", ...item.missing]
@@ -417,32 +421,39 @@ export function PreAuditWorkspace({
       savingVerification.current = false;
     }
   }
-  async function checkSavedDocument() {
-    if (!verifyItem || savingVerification.current) return;
+  async function checkSavedDocument(selected?: AuditItem) {
+    const selectedItem = selected || verifyItem;
+    if (!selectedItem || savingVerification.current) return;
     savingVerification.current = true;
     try {
       const saved = await run(
-        { action: "import-document", key: verifyItem.key },
+        { action: "import-document", key: selectedItem.key },
         "verify-document",
       );
-      if (!saved) return;
+      if (!saved) {
+        setVerifyItem(selectedItem);
+        return;
+      }
       const item = saved.summary.items.find(
-        (entry) => entry.key === verifyItem.key,
+        (entry) => entry.key === selectedItem.key,
       );
       if (!item) return;
-      setVerifyItem(item);
-      if (item.missing.length) return;
+      if (item.missing.length) {
+        setVerifyItem(item);
+        return;
+      }
       const verified = await run(
         { action: "verify", key: item.key, fingerprint: item.fingerprint },
         "verify-document",
       );
       if (verified) verifyDialog.current?.close();
+      else setVerifyItem(item);
     } finally {
       savingVerification.current = false;
     }
   }
   function card(item: AuditItem) {
-    const waiting = busy.includes(item.key);
+    const waiting = busy.includes(item.key) || verificationBusy;
     return (
       <tr
         className="validation-card validation-table-row"
@@ -1271,7 +1282,7 @@ export function PreAuditWorkspace({
               <Button
                 className="verify-action"
                 disabled={busy.includes("verify-document")}
-                onClick={checkSavedDocument}
+                onClick={() => checkSavedDocument()}
               >
                 {busy.includes("verify-document") ? (
                   <LoaderCircle size={15} className="spin" />
